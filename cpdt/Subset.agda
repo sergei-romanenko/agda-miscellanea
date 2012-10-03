@@ -2,7 +2,9 @@ open import Data.Empty
 open import Data.Bool
 open import Data.Nat
 --open import Data.Nat.Properties
+open import Data.Maybe
 open import Data.Product
+open import Data.Sum
 open import Function using ( _∘_ )
 
 open import Relation.Nullary
@@ -31,10 +33,17 @@ pred₂ (suc n , 1≤n) = n
 pred₃ : (s : Σ ℕ (λ n → 1 ≤ n)) → Σ ℕ (λ m → m ≡ suc (proj₁ s))
 pred₃ (n , 1≤n) = suc n , refl
 
-pred₄ : (n : ℕ) → 1 ≤ n  → Σ ℕ (λ m → n ≡ suc m)
-pred₄ zero ()
-pred₄ (suc n) 1≤n = n , refl
+pred₅ : (n : ℕ) → Σ ℕ (λ m → n ≡ suc m) ⊎ n ≡ 0
+pred₅ zero = inj₂ refl
+pred₅ (suc n) = inj₁ (n , refl)
 
+pred₇ : (n : ℕ) → Maybe (Σ ℕ (λ m → n ≡ suc m))
+pred₇ zero = nothing
+pred₇ (suc n) = just (n , refl)
+
+pred₈ : (n : ℕ) → 1 ≤ n  → Σ ℕ (λ m → n ≡ suc m)
+pred₈ zero ()
+pred₈ (suc n) 1≤n = n , refl
 
 suc-pred : ∀ {n m} -> suc n ≡ suc (suc m) → n ≡ suc m
 suc-pred refl = refl
@@ -46,6 +55,12 @@ pred-strong₇ (suc (suc n)) zero = no (λ ())
 pred-strong₇ (suc n') (suc m') with pred-strong₇ n' m'
 pred-strong₇ (suc n') (suc m') | yes p = yes (cong suc p)
 pred-strong₇ (suc n') (suc m') | no ¬p = no (¬p ∘ suc-pred)
+
+pred₉ : (n : ℕ) → Dec(Σ ℕ (λ m → n ≡ suc m))
+pred₉ zero = no 0≢m+1 where
+  0≢m+1 : Σ ℕ (λ m → 0 ≡ suc m) → ⊥
+  0≢m+1 (m , ())
+pred₉ (suc n) = yes (n , refl)
 
 -- A Type-Checking Example
 
@@ -112,3 +127,6 @@ t01 = typeCheck (nat 0) nat
 t02 = typeCheck (plus (nat 1) (nat 2)) nat
 
 t03 = typeCheck (plus (nat 1) (bool false)) bool
+
+--typeCheck' : (e : Exp) → (τ : Type) →  Dec (⊢ e ▷ τ)
+--typeCheck' = ?
