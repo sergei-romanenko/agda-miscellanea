@@ -45,8 +45,8 @@ pred₈ : (n : ℕ) → 1 ≤ n  → Σ ℕ (λ m → n ≡ suc m)
 pred₈ zero ()
 pred₈ (suc n) 1≤n = n , refl
 
-suc-pred : ∀ {n m} -> suc n ≡ suc (suc m) → n ≡ suc m
-suc-pred refl = refl
+inv-suc : ∀ {n m} -> suc n ≡ suc m → n ≡ m
+inv-suc refl = refl
 
 pred-strong₇ : (n : ℕ) → (m : ℕ) -> Dec(n ≡ suc m)
 pred-strong₇ zero m = no (λ ())
@@ -54,7 +54,7 @@ pred-strong₇ (suc zero) zero = yes refl
 pred-strong₇ (suc (suc n)) zero = no (λ ())
 pred-strong₇ (suc n') (suc m') with pred-strong₇ n' m'
 pred-strong₇ (suc n') (suc m') | yes p = yes (cong suc p)
-pred-strong₇ (suc n') (suc m') | no ¬p = no (¬p ∘ suc-pred)
+pred-strong₇ (suc n') (suc m') | no ¬p = no (¬p ∘ inv-suc)
 
 pred₉ : (n : ℕ) → Dec(Σ ℕ (λ m → n ≡ suc m))
 pred₉ zero = no 0≢m+1 where
@@ -102,31 +102,31 @@ nat  ≡Ty? bool = no (λ ())
 bool ≡Ty? nat = no (λ ())
 bool ≡Ty? bool = yes refl
 
-typeCheck : (e : Exp) → (τ : Type) →  Dec (⊢ e ▷ τ)
-typeCheck (nat n) nat = yes htNat
-typeCheck (nat n) bool = no (λ ())
-typeCheck (plus e1 e2) nat with typeCheck e1 nat | typeCheck e2 nat
-typeCheck (plus e1 e2) nat  | yes p | yes q = yes (htPlus p q)
-typeCheck (plus e1 e2) nat  | _ | no ¬q =
+⊢?_▷_ : (e : Exp) → (τ : Type) →  Dec (⊢ e ▷ τ)
+⊢? nat n ▷ nat = yes htNat
+⊢? nat n ▷ bool = no (λ ())
+⊢? plus e1 e2 ▷ nat with ⊢? e1 ▷ nat | ⊢? e2 ▷ nat
+⊢? plus e1 e2 ▷ nat  | yes p | yes q = yes (htPlus p q)
+⊢? plus e1 e2 ▷ nat  | _ | no ¬q =
                 no (λ z → ¬q (inv-htPlus-2 e1 e2 z))
-typeCheck (plus e1 e2) nat  | no ¬p | yes q =
+⊢? plus e1 e2 ▷ nat  | no ¬p | yes q =
                 no (λ z → ¬p (inv-htPlus-1 e1 e2 z))
-typeCheck (plus e1 e2) bool = no (λ ())
-typeCheck (bool b) nat = no (λ ())
-typeCheck (bool b) bool = yes htBool
-typeCheck (and e1 e2) nat = no (λ ())
-typeCheck (and e1 e2) bool with typeCheck e1 bool | typeCheck e2 bool
-typeCheck (and e1 e2) bool | yes p | yes p' = yes (htAnd p p')
-typeCheck (and e1 e2) bool | yes p | no ¬p =
+⊢? plus e1 e2 ▷ bool = no (λ ())
+⊢? bool b ▷ nat = no (λ ())
+⊢? bool b ▷ bool = yes htBool
+⊢? and e1 e2 ▷ nat = no (λ ())
+⊢? and e1 e2 ▷ bool with ⊢? e1 ▷ bool | ⊢? e2 ▷ bool
+⊢? and e1 e2 ▷ bool | yes p | yes p' = yes (htAnd p p')
+⊢? and e1 e2 ▷ bool | yes p | no ¬p =
                no (λ z → ¬p (inv-htAnd-2 e1 e2 z))
-typeCheck (and e1 e2) bool | no ¬p | _ =
+⊢? and e1 e2 ▷ bool | no ¬p | _ =
                no (λ z → ¬p (inv-htAnd-1 e1 e2 z))
 
-t01 = typeCheck (nat 0) nat
+t01 : (⊢? nat 0 ▷ nat) ≡ yes htNat
+t01 = refl
 
-t02 = typeCheck (plus (nat 1) (nat 2)) nat
+t02 : ⊢? plus (nat 1) (nat 2) ▷ nat ≡ yes (htPlus htNat htNat)
+t02 = refl
 
-t03 = typeCheck (plus (nat 1) (bool false)) bool
-
---typeCheck' : (e : Exp) → (τ : Type) →  Dec (⊢ e ▷ τ)
---typeCheck' = ?
+t03 : ⌊ ⊢? plus (nat 1) (bool false) ▷ bool ⌋ ≡ false
+t03 = refl
