@@ -83,17 +83,17 @@ data ⊢_▷_ : Exp -> Type -> Set where
   htAnd  : ∀ {e1 e2} → ⊢ e1 ▷ bool → ⊢ e2 ▷ bool →
              ⊢ and e1 e2 ▷ bool
 
-inv-htPlus-1 : ∀ (e1 e2 : Exp) → ⊢ plus e1 e2 ▷ nat → ⊢ e1 ▷ nat
-inv-htPlus-1 e1 e2 (htPlus p q) = p
+inv-htPlus-1 : ∀ {e1 e2} → ⊢ plus e1 e2 ▷ nat → ⊢ e1 ▷ nat
+inv-htPlus-1 (htPlus p q) = p
 
-inv-htPlus-2 : ∀ (e1 e2 : Exp) → ⊢ plus e1 e2 ▷ nat → ⊢ e2 ▷ nat
-inv-htPlus-2 e1 e2 (htPlus p q) = q
+inv-htPlus-2 : ∀ {e1 e2} → ⊢ plus e1 e2 ▷ nat → ⊢ e2 ▷ nat
+inv-htPlus-2 (htPlus p q) = q
 
-inv-htAnd-1 : ∀ (e1 e2 : Exp) → ⊢ and e1 e2 ▷ bool → ⊢ e1 ▷ bool
-inv-htAnd-1 e1 e2 (htAnd p q) = p
+inv-htAnd-1 : ∀ {e1 e2} → ⊢ and e1 e2 ▷ bool → ⊢ e1 ▷ bool
+inv-htAnd-1 (htAnd p q) = p
 
-inv-htAnd-2 : ∀ (e1 e2 : Exp) → ⊢ and e1 e2 ▷ bool → ⊢ e2 ▷ bool
-inv-htAnd-2 e1 e2 (htAnd p q) = q
+inv-htAnd-2 : ∀ {e1 e2} → ⊢ and e1 e2 ▷ bool → ⊢ e2 ▷ bool
+inv-htAnd-2 (htAnd p q) = q
 
 
 _≡Ty?_ : (σ τ : Type) → Dec (σ ≡ τ)
@@ -106,21 +106,17 @@ bool ≡Ty? bool = yes refl
 ⊢? nat n ▷ nat = yes htNat
 ⊢? nat n ▷ bool = no (λ ())
 ⊢? plus e1 e2 ▷ nat with ⊢? e1 ▷ nat | ⊢? e2 ▷ nat
-⊢? plus e1 e2 ▷ nat  | yes p | yes q = yes (htPlus p q)
-⊢? plus e1 e2 ▷ nat  | _ | no ¬q =
-                no (λ z → ¬q (inv-htPlus-2 e1 e2 z))
-⊢? plus e1 e2 ▷ nat  | no ¬p | yes q =
-                no (λ z → ¬p (inv-htPlus-1 e1 e2 z))
+... | yes p | yes q = yes (htPlus p q)
+... | no ¬p | _     = no (¬p ∘ inv-htPlus-1)
+... | _     | no ¬q = no (¬q ∘ inv-htPlus-2)
 ⊢? plus e1 e2 ▷ bool = no (λ ())
 ⊢? bool b ▷ nat = no (λ ())
 ⊢? bool b ▷ bool = yes htBool
 ⊢? and e1 e2 ▷ nat = no (λ ())
 ⊢? and e1 e2 ▷ bool with ⊢? e1 ▷ bool | ⊢? e2 ▷ bool
-⊢? and e1 e2 ▷ bool | yes p | yes p' = yes (htAnd p p')
-⊢? and e1 e2 ▷ bool | yes p | no ¬p =
-               no (λ z → ¬p (inv-htAnd-2 e1 e2 z))
-⊢? and e1 e2 ▷ bool | no ¬p | _ =
-               no (λ z → ¬p (inv-htAnd-1 e1 e2 z))
+... | yes p | yes p' = yes (htAnd p p')
+... | _     | no ¬q = no (¬q ∘ inv-htAnd-2)
+... | no ¬p | _     = no (¬p ∘ inv-htAnd-1)
 
 t01 : (⊢? nat 0 ▷ nat) ≡ yes htNat
 t01 = refl
@@ -130,3 +126,16 @@ t02 = refl
 
 t03 : ⌊ ⊢? plus (nat 1) (bool false) ▷ bool ⌋ ≡ false
 t03 = refl
+
+inv-plus-1 : ∀ {e1 e2} → Σ Type (⊢_▷_ (plus e1 e2)) → Σ Type (⊢_▷_ e1)
+inv-plus-1 (.nat , htPlus p1 p2) = nat , p1
+
+⊢?_ : (e : Exp) → Maybe ( Σ Type (λ τ → ⊢ e ▷ τ) )
+⊢? nat n = just (nat , htNat)
+⊢? plus e1 e2 with ⊢? e1 | ⊢? e2
+⊢? plus e1 e2 | just (nat , p1) | just (nat , p2) = just (nat , htPlus p1 p2)
+⊢? plus e1 e2 | _               | _               = nothing
+⊢? bool b = just (bool , htBool)
+⊢? and e1 e2 with ⊢? e1 | ⊢? e2
+⊢? and e1 e2 | just (bool , p1) | just (bool , p2) = just (bool , htAnd p1 p2)
+⊢? and e1 e2 | _                | _                = nothing
