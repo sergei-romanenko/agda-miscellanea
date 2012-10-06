@@ -1,4 +1,5 @@
 open import Data.Nat
+open import Function using (_∘_)
 
 open import Relation.Binary
 open import Relation.Binary.PropositionalEquality hiding([_])
@@ -41,7 +42,7 @@ double-injective₁ (suc n') (suc m') ssd with inv-suc (inv-suc ssd)
 
 double-injective₂ : (n m : ℕ) → double n ≡ double m → n ≡ m
 double-injective₂ zero zero _ = refl
-double-injective₂ zero (suc n) ()
+double-injective₂ zero (suc m') ()
 double-injective₂ (suc n') zero ()
 double-injective₂ (suc n') (suc m') ssd≡ssd = sn≡sm
   where
@@ -56,3 +57,11 @@ double-injective₂ (suc n') (suc m') ssd≡ssd = sn≡sm
   sn≡sm : suc n' ≡ suc m'
   sn≡sm = cong suc n≡m
 
+double-injective₃ : (n m : ℕ) → double n ≡ double m → n ≡ m
+double-injective₃ zero zero _ = refl
+double-injective₃ zero (suc m') ()
+double-injective₃ (suc n') zero ()
+double-injective₃ (suc n') (suc m') ssd≡ssd =
+  cong suc (double-injective₂ n' m' (cong (pred ∘ pred) ssd≡ssd))
+
+  
