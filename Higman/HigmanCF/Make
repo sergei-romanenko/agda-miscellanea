@@ -1,0 +1,10 @@
+-R . HigmanCF
+Higman.v
+Higman2.v 
+-custom "ocamlopt -o higman higman2.mli higman2.ml main.ml" "Higman2.vo higman2.ml higman2.mli main.ml" higman
+-custom   
+	"@echo '***** test: running Higman proof on one example *****'
+	./higman 101 0110 01010
+	@echo '****************** End of test **********************'"
+  "" test 
+
