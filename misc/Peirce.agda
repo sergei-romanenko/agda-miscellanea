@@ -17,9 +17,9 @@ em = ∀ (R : Set) → R ⊎ ¬ R
 peirce→em : peirce → em
 peirce→em h R =
   h (R ⊎ (R → ⊥)) ⊥
-    (λ z → inj₂ (λ x → z (inj₁ x))) 
+    (λ n-rnr → inj₂ (λ r → n-rnr (inj₁ r))) 
 
 em→peirce : em → peirce
 em→peirce e P Q h with e P
-em→peirce e P Q h | inj₁ p = p
+em→peirce e P Q h | inj₁  p = p
 em→peirce e P Q h | inj₂ ¬p = h (λ p → ⊥-elim (¬p p))
