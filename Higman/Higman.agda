@@ -19,10 +19,11 @@ open import Data.Nat
 open import Data.List
 open import Data.Product
 open import Data.Sum
+open import Data.Unit
 
 open import Relation.Nullary
 open import Relation.Binary
-open import Relation.Binary.PropositionalEquality hiding([_])
+open import Relation.Binary.PropositionalEquality renaming([_] to ≡[_])
 
 open import Relation.Nullary.Decidable using (⌊_⌋)
 
@@ -114,20 +115,6 @@ lemma4 lA (R1 (R1 y)) = T1 (lemma4 lA (R1 y))
 lemma4 lB (R1 R0) = T0 lB≢lA R0
 lemma4 lB (R1 (R1 y)) = T1 (lemma4 lB (R1 y))
 
-letter≢ : ∀ {a b c} →
-             a ≢L b → c ≢L a → c ≡ b
-letter≢ {.lB} {lA} a≢b lA≢lB = refl
-letter≢ {.lA} {lA} () lB≢lA
-letter≢ {.lB} {lB} () lA≢lB
-letter≢ {.lA} {lB} a≢b lB≢lA = refl
-
-_≟L_ : ∀ (a b : Letter) → Dec (a ≡ b)
---a ≟L b = {!!}
-lA ≟L lA = yes refl
-lA ≟L lB = no (λ ())
-lB ≟L lA = no (λ ())
-lB ≟L lB = yes refl
-
 prop2 : ∀ {a b xs} →
         a ≢L b →
         bar xs →
@@ -146,19 +133,34 @@ prop3 b zs Ra = bar2 [] (prop1 zs)
 higman : bar []
 higman = bar2 [] (bar2 [] (bar1 (good0 (L0 ⊴-[]))))
 
-data is-prefix {A : Set} : List A → (ℕ → A) → Set where
-  is-prefix-[] : ∀ (f : ℕ → A) → is-prefix [] f
-  is-prefix-∷  : ∀ (f : ℕ → A) (x : A) (xs : List A) →
-        x ≡ f (length xs) → is-prefix xs f → is-prefix (x ∷ xs) f
+data is-prefix {A : Set} (f : ℕ → A) : List A → Set where
+  is-prefix-[] : is-prefix f []
+  is-prefix-∷  : (xs : List A) →
+        is-prefix f xs → is-prefix f (f (length xs) ∷ xs)
+
+is-prefix-x : ∀ {A : Set} {f} {x : A} {xs} →
+                is-prefix f (x ∷ xs) → x ≡ f (length xs)
+is-prefix-x (is-prefix-∷ p q) = refl
+
+is-prefix-p : ∀ {A : Set} {f} {x : A} {xs} →
+                is-prefix f (x ∷ xs) → is-prefix f xs
+is-prefix-p (is-prefix-∷ p q) = q
+
+
+test-is-prefix : is-prefix suc (3 ∷ 2 ∷ 1 ∷ [])
+test-is-prefix =
+  is-prefix-∷ (suc (suc zero) ∷ suc zero ∷ [])
+              (is-prefix-∷ (suc zero ∷ []) (is-prefix-∷ [] is-prefix-[]))
 
 good-prefix-lemma :
-  ∀ (ws : List Word) (f : ℕ → Word) →
+  ∀ ws → (f : ℕ → Word) →
     bar ws →
-    is-prefix ws f →
-    Σ (List Word) (λ vs → is-prefix vs f × good vs)
-good-prefix-lemma ws f b p = {!!}
+    is-prefix f ws →
+    Σ (List Word) (λ vs → is-prefix f vs × good vs)
+good-prefix-lemma ws f (bar1 good-ws) p = ws , p , good-ws
+good-prefix-lemma ws f (bar2 w bar-w∷ws) p = {!!}
 
 good-prefix :
   ∀ (f : ℕ → Word) →
-    ‌Σ (List Word) (λ vs → (is-prefix vs f × good vs))
-good-prefix f = {!!}
+    ‌Σ (List Word) (λ vs → (is-prefix f vs × good vs))
+good-prefix f = good-prefix-lemma [] f higman is-prefix-[]
