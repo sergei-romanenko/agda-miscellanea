@@ -62,6 +62,6 @@ double-injective₃ zero zero _ = refl
 double-injective₃ zero (suc m') ()
 double-injective₃ (suc n') zero ()
 double-injective₃ (suc n') (suc m') ssd≡ssd =
-  cong suc (double-injective₂ n' m' (cong (pred ∘ pred) ssd≡ssd))
+  cong suc (double-injective₃ n' m' (cong (pred ∘ pred) ssd≡ssd))
 
   

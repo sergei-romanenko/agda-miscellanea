@@ -1,5 +1,5 @@
 open import Data.Empty   using (⊥; ⊥-elim)
-open import Data.Product using (_×_; _,_; proj₁; proj₂)
+open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
 open import Data.Sum     using (_⊎_; inj₁; inj₂; [_,_])
 open import Relation.Nullary using (¬_)
 
@@ -9,7 +9,7 @@ module Peirce where
 -- Excluded Middle (EM).
 
 peirce : Set₁
-peirce = ∀ (P Q : Set) →  ((P → Q) → P) → P
+peirce = ∀ (P Q : Set) → ((P → Q) → P) → P
 
 em : Set₁
 em = ∀ (R : Set) → R ⊎ ¬ R
@@ -21,5 +21,32 @@ peirce→em h R =
 
 em→peirce : em → peirce
 em→peirce e P Q h with e P
-em→peirce e P Q h | inj₁  p = p
-em→peirce e P Q h | inj₂ ¬p = h (λ p → ⊥-elim (¬p p))
+... | inj₁  p = p
+... | inj₂ ¬p = h (λ p → ⊥-elim (¬p p))
+
+classic : Set₁
+classic = ∀ (P : Set) → ¬ ¬ P → P
+
+classic→em : classic → em
+classic→em c R =
+  c (R ⊎ (R → ⊥))
+    (λ z → z (inj₂ (λ r → z (inj₁ r))))
+
+em→classic : em → classic
+em→classic e P with e P
+em→classic e P | inj₁  p = λ ¬¬p → p
+em→classic e P | inj₂ ¬p = λ ¬¬p → ⊥-elim (¬¬p ¬p)
+
+de-Morgan-¬×¬ = ∀ (P Q : Set) → ¬(¬ P × ¬ Q) → P ⊎ Q
+
+classic→de-Morgan-¬×¬ : classic → de-Morgan-¬×¬
+classic→de-Morgan-¬×¬ c P Q r =
+  c (P ⊎ Q) (λ ¬-p⊎q → r ((λ p → ¬-p⊎q (inj₁ p)) , (λ q → ¬-p⊎q (inj₂ q))))
+
+de-Morgan-¬×¬→em : de-Morgan-¬×¬ → em
+de-Morgan-¬×¬→em m R =
+  m R (R → ⊥) (λ x → proj₂ x (proj₁ x))
+
+de-Morgan-¬×¬→classic : de-Morgan-¬×¬ → classic
+de-Morgan-¬×¬→classic m P ¬¬p =
+  em→classic (de-Morgan-¬×¬→em m) P ¬¬p
