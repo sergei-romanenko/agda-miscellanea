@@ -135,32 +135,27 @@ higman = bar2 [] (bar2 [] (bar1 (good0 (L0 ⊴-[]))))
 
 data is-prefix {A : Set} (f : ℕ → A) : List A → Set where
   is-prefix-[] : is-prefix f []
-  is-prefix-∷  : (xs : List A) →
+  is-prefix-∷  : ∀ {xs : List A} →
         is-prefix f xs → is-prefix f (f (length xs) ∷ xs)
 
-is-prefix-x : ∀ {A : Set} {f} {x : A} {xs} →
-                is-prefix f (x ∷ xs) → x ≡ f (length xs)
-is-prefix-x (is-prefix-∷ p q) = refl
-
-is-prefix-p : ∀ {A : Set} {f} {x : A} {xs} →
-                is-prefix f (x ∷ xs) → is-prefix f xs
-is-prefix-p (is-prefix-∷ p q) = q
-
-
 test-is-prefix : is-prefix suc (3 ∷ 2 ∷ 1 ∷ [])
-test-is-prefix =
-  is-prefix-∷ (suc (suc zero) ∷ suc zero ∷ [])
-              (is-prefix-∷ (suc zero ∷ []) (is-prefix-∷ [] is-prefix-[]))
+test-is-prefix = is-prefix-∷ (is-prefix-∷ (is-prefix-∷ is-prefix-[]))
 
 good-prefix-lemma :
-  ∀ ws → (f : ℕ → Word) →
+  ∀ (f : ℕ → Word) ws →
     bar ws →
     is-prefix f ws →
     Σ (List Word) (λ vs → is-prefix f vs × good vs)
-good-prefix-lemma ws f (bar1 good-ws) p = ws , p , good-ws
-good-prefix-lemma ws f (bar2 w bar-w∷ws) p = {!!}
+good-prefix-lemma f ws (bar1 b) p = ws , p , b
+good-prefix-lemma f ws (bar2 w b) p =
+  good-prefix-lemma f (f (length ws) ∷ ws) {!!}  (is-prefix-∷ p)
+{-
+  good-prefix-lemma f (w ∷ ws) bar-w∷ws (is-prefix-∷ x p)
+  where x : w ≡ f (length ws)
+        x = {!!}
+-}
 
 good-prefix :
   ∀ (f : ℕ → Word) →
     ‌Σ (List Word) (λ vs → (is-prefix f vs × good vs))
-good-prefix f = good-prefix-lemma [] f higman is-prefix-[]
+good-prefix f = good-prefix-lemma f [] higman is-prefix-[]
