@@ -34,10 +34,6 @@ data Cmd : Set where
   seq    : (c1 : Cmd) → (c2 : Cmd) → Cmd
   while  : (e : Exp) → (c : Cmd) → Cmd
 
-zero? : ℕ → Bool
-zero? zero = true
-zero? (suc n) = false
-
 data EvalCmd : (vs1 : Vars) → (c : Cmd) → (vs2 : Vars) → Set where
   eAssign : ∀ {vs v e} →
     EvalCmd vs (assign v e) (vs [ v ↦ evalExp vs e ])
@@ -46,10 +42,10 @@ data EvalCmd : (vs1 : Vars) → (c : Cmd) → (vs2 : Vars) → Set where
     ∞ (EvalCmd vs2 c2 vs3) →
     EvalCmd vs1 (seq c1 c2) vs3
   eWhileFalse : ∀ {vs e c} →
-    evalExp vs e ≡ zero →
+    evalExp vs e ≡ 0 →
     EvalCmd vs (while e c) vs
   eWhileTrue : ∀ {vs1 vs2 vs3 e c} →
-    T (not (zero? (evalExp vs1 e))) →
+    ¬ evalExp vs1 e ≡ 0 →
     ∞ (EvalCmd vs1 c vs2) →
     ∞ (EvalCmd vs2 (while e c) vs3) →
     EvalCmd vs1 (while e c) vs3
@@ -80,10 +76,17 @@ optExp-correct vs (plus e1 e2) with const0? e1
 
 optCmd-correct : ∀ {vs1 c vs2} → EvalCmd vs1 c vs2 →
                    EvalCmd vs1 (optCmd c) vs2
-optCmd-correct (eAssign {vs} {v} {e}) with optExp-correct vs e
-... | e-c = {!!}
+optCmd-correct (eAssign {vs} {v} {e}) rewrite sym (optExp-correct vs e) =
+  eAssign {vs} {v} {optExp e}
+  where o-e : Exp
+        o-e = optExp e
+        e-c : evalExp vs (optExp e) ≡ evalExp vs e
+        e-c = optExp-correct vs e
 optCmd-correct (eSeq t1 t2) =
   eSeq (♯ optCmd-correct (♭ t1)) (♯ optCmd-correct (♭ t2))
-optCmd-correct (eWhileFalse {vs} {e} {c} z) with optExp-correct vs e
-... | e-c  = {!!}
-optCmd-correct (eWhileTrue nz t r) = {!!}
+optCmd-correct (eWhileFalse {vs} {e} {c} z) =
+  eWhileFalse (trans (optExp-correct vs e) z)
+optCmd-correct (eWhileTrue {vs1} {vs2} {vs3} {e} {c} nz t r) =
+  eWhileTrue
+    (subst (λ z → ¬ z ≡ 0) (sym (optExp-correct vs1 e)) nz)
+    (♯ optCmd-correct (♭ t)) (♯ optCmd-correct (♭ r))
