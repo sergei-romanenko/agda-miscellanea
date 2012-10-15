@@ -39,8 +39,8 @@ inclusion (t3 p) = w1
 inclusion (t4 p) = w1
 
 safety : {c : State} → Synapse' c → ¬ Unsafe c
-safety w1 = λ ()
-safety w2 = λ ()
+safety w1 ()
+safety w2 ()
 
 valid : {c : State} → Synapse c → ¬ Unsafe c
 valid = safety ∘ inclusion

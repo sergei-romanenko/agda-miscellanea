@@ -40,7 +40,8 @@ inclusion (t5 d) with inclusion d
 inclusion (t5 d) | w1 = w1
 
 safety : {c : State} → DataRace' c → ¬ Unsafe c
-safety () u1
+safety w1 ()
+safety w2 ()
 
 valid : {c : State} → DataRace c → ¬ Unsafe c
 valid = safety ∘ inclusion
