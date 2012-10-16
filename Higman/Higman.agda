@@ -20,6 +20,7 @@ open import Data.List
 open import Data.Product
 open import Data.Sum
 open import Data.Unit
+open import Data.Empty
 
 open import Relation.Nullary
 open import Relation.Binary
@@ -67,16 +68,16 @@ data T (a : Letter) : List Word → List Word → Set where
   T2 : ∀ {b w ws zs} →
        a ≢L b → T a ws zs → T a ws ((b ∷ w) ∷ zs)
 
+-- Note the subtle scope of ∀ w !
+
 data bar : List Word → Set where
   bar1 : ∀ {ws} → good ws → bar ws
-  bar2 : ∀ {ws} w → bar (w ∷ ws) → bar ws
+  bar2 : ∀ {ws} → (∀ w → bar (w ∷ ws)) → bar ws
 
 prop1 : ∀ (ws : List Word) → bar ([] ∷ ws)
-
-prop1 ws = bar2 [] (bar1 (good0 (L0 ⊴-[])))
+prop1 ws = bar2 (λ w → bar1 (good0 (L0 ⊴-[])))
 
 lemma1 : ∀ {ws xs x} → L xs ws → L (x ∷ xs) ws
-
 lemma1 (L0 y) = L0 (⊴-drop y)
 lemma1 (L1 y) = L1 (lemma1 y)
 
@@ -115,6 +116,20 @@ lemma4 lA (R1 (R1 y)) = T1 (lemma4 lA (R1 y))
 lemma4 lB (R1 R0) = T0 lB≢lA R0
 lemma4 lB (R1 (R1 y)) = T1 (lemma4 lB (R1 y))
 
+letter≢ : ∀ {a b c} →
+             a ≢L b → c ≢L a → c ≡ b
+letter≢ {.lB} {lA} a≢b lA≢lB = refl
+letter≢ {.lA} {lA} () lB≢lA
+letter≢ {.lB} {lB} () lA≢lB
+letter≢ {.lA} {lB} a≢b lB≢lA = refl
+
+_≟L_ : ∀ (a b : Letter) → Dec (a ≡ b)
+--a ≟L b = {!!}
+lA ≟L lA = yes refl
+lA ≟L lB = no (λ ())
+lB ≟L lA = no (λ ())
+lB ≟L lB = yes refl
+
 prop2 : ∀ {a b xs} →
         a ≢L b →
         bar xs →
@@ -122,16 +137,36 @@ prop2 : ∀ {a b xs} →
         bar ys →
         (zs : List Word) →
         T a xs zs → T b ys zs → bar zs
-prop2 a≢b barxs ys barys zs Ta Tb = bar2 [] (prop1 zs)
+prop2 a≢b (bar1 y) ys barys zs Ta Tb = bar1 (lemma3 Ta y)
+prop2 a≢b (bar2 y) ys (bar1 y') zs Ta Tb = bar1 (lemma3 Tb y')
+prop2 a≢b (bar2 y) ys (bar2 y') zs Ta Tb = {!-m -t 60!}
 
-prop3 : ∀ {a xs x} →
-        bar (x ∷ xs) →
-        (zs : List Word) →
-        R a (x ∷ xs) zs → bar zs
-prop3 b zs Ra = bar2 [] (prop1 zs)
+mutual
+  prop3' : ∀ a xs → ((x : Word) → bar (x ∷ xs)) →
+             ∀ zs → xs ≢ [] → R a xs zs → ∀ w  → bar (w ∷ zs)
+  prop3' a xs b zs xs≢[] Ra [] = prop1 zs
+  prop3' a xs b zs xs≢[] Ra (lA ∷ cs) = xxx
+    where xxx : bar ((lA ∷ cs) ∷ zs)
+          xxx = prop3 a xs {!!} {!!} xs≢[] {!!}
+  prop3' a xs b zs xs≢[] Ra (lB ∷ cs) = {!!}
+
+  prop3 : ∀ a xs →
+          bar xs →
+          (zs : List Word) →
+          xs ≢ [] →
+          R a xs zs → bar zs
+  prop3 a xs (bar1 b) zs xs≢[] Ra = bar1 (lemma2 Ra b)
+  prop3 a xs (bar2 b) zs xs≢[] Ra = bar2 (prop3' a xs b zs xs≢[] Ra)
+    where b' : (x : List Letter) → bar (x ∷ xs)
+          b' = b
+
+higman' : ∀ w → bar (w ∷ [])
+higman' [] = prop1 []
+higman' (c ∷ cs) =
+  prop3 c (cs ∷ []) (higman' cs) ((c ∷ cs) ∷ []) (λ ()) (R1 R0)
 
 higman : bar []
-higman = bar2 [] (bar2 [] (bar1 (good0 (L0 ⊴-[]))))
+higman = bar2 higman'
 
 data is-prefix {A : Set} (f : ℕ → A) : List A → Set where
   is-prefix-[] : is-prefix f []
@@ -146,14 +181,10 @@ good-prefix-lemma :
     bar ws →
     is-prefix f ws →
     Σ (List Word) (λ vs → is-prefix f vs × good vs)
-good-prefix-lemma f ws (bar1 b) p = ws , p , b
-good-prefix-lemma f ws (bar2 w b) p =
-  good-prefix-lemma f (f (length ws) ∷ ws) {!!}  (is-prefix-∷ p)
-{-
-  good-prefix-lemma f (w ∷ ws) bar-w∷ws (is-prefix-∷ x p)
-  where x : w ≡ f (length ws)
-        x = {!!}
--}
+good-prefix-lemma f ws (bar1 g) p = ws , p , g
+good-prefix-lemma f ws (bar2 b) p =
+  let w = f (length ws) in
+  good-prefix-lemma f (w ∷ ws) (b w) (is-prefix-∷ p)
 
 good-prefix :
   ∀ (f : ℕ → Word) →
