@@ -36,9 +36,9 @@ data Letter : Set where
 
 Word = List Letter
 
-data _≢L_ : (a b : Letter) → Set where
-  lA≢lB : lA ≢L lB
-  lB≢lA : lB ≢L lA
+~ : Letter → Letter
+~ lA = lB
+~ lB = lA
 
 infix 4 _⊴_
 
@@ -61,12 +61,12 @@ data R (a : Letter) : List Word → List Word → Set where
          R a vs ws → R a (w ∷ vs) ((a ∷ w) ∷ ws)
 
 data T (a : Letter) : List Word → List Word → Set where
-  T0 : ∀ {b w ws zs} →
-       a ≢L b → R a ws zs → T a (w ∷ zs) ((a ∷ w) ∷ zs)
+  T0 : ∀ {w ws zs} →
+       R (~ a) ws zs → T a (w ∷ zs) ((a ∷ w) ∷ zs)
   T1 : ∀ {w ws zs} →
         T a ws zs → T a (w ∷ ws) ((a ∷ w) ∷ zs)
-  T2 : ∀ {b w ws zs} →
-       a ≢L b → T a ws zs → T a ws ((b ∷ w) ∷ zs)
+  T2 : ∀  {w ws zs} →
+       T a ws zs → T a ws (((~ a) ∷ w) ∷ zs)
 
 -- Note the subtle scope of ∀ w !
 
@@ -93,35 +93,40 @@ lemma2 R0 g = g
 lemma2 (R1 r) (good0 l) = good0 (lemma2' r l)
 lemma2 (R1 r) (good1 g) = good1 (lemma2 r g)
 
-lemma3' : ∀ {vs ws x xs} →
+lemma3' : ∀ {vs ws xs} x →
           T x vs ws → L xs vs → L (x ∷ xs) ws
-lemma3' (T0 d r) (L0 e) = L0 (⊴-keep e)
-lemma3' (T0 d r) (L1 l) = L1 (lemma1 l)
-lemma3' (T1 t) (L0 e) = L0 (⊴-keep e)
-lemma3' (T1 t) (L1 l) = L1 (lemma3' t l)
-lemma3' (T2 d t) l = L1 (lemma3' t l)
+lemma3' _ (T0 r) (L0 e) = L0 (⊴-keep e)
+lemma3' _ (T0 r) (L1 l) = L1 (lemma1 l)
+lemma3' _ (T1 t) (L0 e) = L0 (⊴-keep e)
+lemma3' lA (T1 t) (L1 l) = L1 (lemma3' lA t l)
+lemma3' lA (T2 t) l = L1 (lemma3' lA t l)
+lemma3' lB (T1 t) (L1 l) = L1 (lemma3' lB t l)
+lemma3' lB (T2 t) l = L1 (lemma3' lB t l)
 
 lemma3 : ∀ {ws zs a} →
          T a ws zs → good ws → good zs
-lemma3 (T0 d r) (good0 l) = good0 (lemma1 l)
-lemma3 (T0 d r) (good1 g) = good1 g
-lemma3 (T1 t) (good0 l) = good0 (lemma3' t l)
+lemma3 (T0 r) (good0 l) = good0 (lemma1 l)
+lemma3 (T0 r) (good1 g) = good1 g
+lemma3 (T1 t) (good0 l) = good0 (lemma3' _ t l)
 lemma3 (T1 t) (good1 g) = good1 (lemma3 t g)
-lemma3 (T2 d t) g = good1 (lemma3 t g)
+lemma3 (T2 t) g = good1 (lemma3 t g)
 
-lemma4 : ∀ {ws zs w} a →
+lemma4 : ∀ {ws zs w} → {a : Letter} →
           R a (w ∷ ws) zs → T a (w ∷ ws) zs
-lemma4 lA (R1 R0) = T0 lA≢lB R0
-lemma4 lA (R1 (R1 r)) = T1 (lemma4 lA (R1 r))
-lemma4 lB (R1 R0) = T0 lB≢lA R0
-lemma4 lB (R1 (R1 r)) = T1 (lemma4 lB (R1 r))
+lemma4 (R1 R0) = T0 R0
+lemma4 (R1 (R1 r)) = T1 (lemma4 (R1 r))
 
-letter≢ : ∀ {a b c} →
-             a ≢L b → c ≢L a → c ≡ b
+{-
+letter≢ : ∀ {a b c : Letter} →
+             a ≢ b → c ≢ a → c ≡ b
+letter≢ a≢b c≢a = {!-c!}
+-}
+{-
 letter≢ {.lB} {lA} a≢b lA≢lB = refl
 letter≢ {.lA} {lA} () lB≢lA
 letter≢ {.lB} {lB} () lA≢lB
 letter≢ {.lA} {lB} a≢b lB≢lA = refl
+-}
 
 _≟L_ : ∀ (a b : Letter) → Dec (a ≡ b)
 --a ≟L b = {!!}
@@ -130,40 +135,46 @@ lA ≟L lB = no (λ ())
 lB ≟L lA = no (λ ())
 lB ≟L lB = yes refl
 
-prop2 : ∀ {a b xs} →
-        a ≢L b →
-        bar xs →
-        (ys : List Word) →
-        bar ys →
-        (zs : List Word) →
-        T a xs zs → T b ys zs → bar zs
-prop2 a≢b (bar1 y) ys barys zs Ta Tb = bar1 (lemma3 Ta y)
-prop2 a≢b (bar2 y) ys (bar1 y') zs Ta Tb = bar1 (lemma3 Tb y')
-prop2 a≢b (bar2 y) ys (bar2 y') zs Ta Tb = {!-m -t 60!}
 
 mutual
-  prop3' : ∀ a xs → ((x : Word) → bar (x ∷ xs)) →
-             ∀ zs → xs ≢ [] → R a xs zs → ∀ w  → bar (w ∷ zs)
-  prop3' a xs b zs xs≢[] Ra [] = prop1 zs
-  prop3' a xs b zs xs≢[] Ra (lA ∷ cs) = xxx
-    where xxx : bar ((lA ∷ cs) ∷ zs)
-          xxx = prop3 a xs {!!} {!!} xs≢[] {!!}
-  prop3' a xs b zs xs≢[] Ra (lB ∷ cs) = {!!}
 
-  prop3 : ∀ a xs →
-          bar xs →
+  prop2 : ∀ {xs ys} a →
+          bar xs → bar ys →
           (zs : List Word) →
-          xs ≢ [] →
-          R a xs zs → bar zs
-  prop3 a xs (bar1 b) zs xs≢[] Ra = bar1 (lemma2 Ra b)
-  prop3 a xs (bar2 b) zs xs≢[] Ra = bar2 (prop3' a xs b zs xs≢[] Ra)
-    where b' : (x : List Letter) → bar (x ∷ xs)
-          b' = b
+          T a xs zs → T (~ a) ys zs → bar zs
+  prop2 a (bar1 g) b-y zs Ta Tb = bar1 (lemma3 Ta g)
+  prop2 a (bar2 bwx) (bar1 g) zs Ta Tb = bar1 (lemma3 Tb g)
+  prop2 lA (bar2 bwx) (bar2 bwy) zs Ta Tb =
+    bar2 prop2A
+      where prop2A : (w : Word) → bar (w ∷ zs)
+            prop2A [] = prop1 zs
+            prop2A (lA ∷ cs) =
+              prop2 lA (bwx cs) (bwy {!!}) 
+                    ((lA ∷ cs) ∷ zs) (T1 Ta) {!!}
+            prop2A (lB ∷ cs) = {!!}
+  prop2 lB (bar2 bwx) (bar2 bwy) zs Ta Tb = {!!}
+
+mutual
+
+  prop3 : ∀ a x xs →
+          bar (x ∷ xs) →
+          (zs : List Word) →
+          R a (x ∷ xs) zs → bar zs
+  prop3 a x xs (bar1 g) zs Ra = bar1 (lemma2 Ra g)
+  prop3 lA x xs (bar2 b) zs Ra = bar2 prop3'
+    where prop3' : (w : Word) → bar (w ∷ zs)
+          prop3' [] = prop1 zs
+          prop3' (lA ∷ cs) =
+            prop3 lA cs (x ∷ xs) (b cs) ((lA ∷ cs) ∷ zs) (R1 Ra)
+          prop3' (lB ∷ cs) =
+            prop2 lB {!!} {!!} ((lB ∷ cs) ∷ zs) {!!} {!!}
+            --prop3 lB cs (x ∷ xs) (b cs) ((lB ∷ cs) ∷ zs) {!-l!}
+  prop3 lB x xs (bar2 b) zs Ra = {!!}
 
 higman' : ∀ w → bar (w ∷ [])
 higman' [] = prop1 []
 higman' (c ∷ cs) =
-  prop3 c (cs ∷ []) (higman' cs) ((c ∷ cs) ∷ []) (λ ()) (R1 R0)
+  prop3 c cs [] (higman' cs) ((c ∷ cs) ∷ []) (R1 R0)
 
 higman : bar []
 higman = bar2 higman'
