@@ -77,44 +77,44 @@ data bar : List Word → Set where
 prop1 : ∀ (ws : List Word) → bar ([] ∷ ws)
 prop1 ws = bar2 (λ w → bar1 (good0 (L0 ⊴-[])))
 
-lemma1 : ∀ {ws xs x} → L xs ws → L (x ∷ xs) ws
-lemma1 (L0 y) = L0 (⊴-drop y)
-lemma1 (L1 y) = L1 (lemma1 y)
+lemma1 : ∀ {ws x xs} → L xs ws → L (x ∷ xs) ws
+lemma1 (L0 e) = L0 (⊴-drop e)
+lemma1 (L1 l) = L1 (lemma1 l)
 
 lemma2' : ∀ {vs ws x xs} →
           R x vs ws → L xs vs → L (x ∷ xs) ws
 lemma2' R0 ()
-lemma2' (R1 y) (L0 y') = L0 (⊴-keep y')
-lemma2' (R1 y) (L1 y') = L1 (lemma2' y y')
+lemma2' (R1 r) (L0 e) = L0 (⊴-keep e)
+lemma2' (R1 r) (L1 l) = L1 (lemma2' r l)
 
 lemma2 : ∀ {vs ws a} →
          R a vs ws → good vs → good ws
 lemma2 R0 g = g
-lemma2 (R1 y) (good0 y') = good0 (lemma2' y y')
-lemma2 (R1 y) (good1 y') = good1 (lemma2 y y')
+lemma2 (R1 r) (good0 l) = good0 (lemma2' r l)
+lemma2 (R1 r) (good1 g) = good1 (lemma2 r g)
 
 lemma3' : ∀ {vs ws x xs} →
           T x vs ws → L xs vs → L (x ∷ xs) ws
-lemma3' (T0 y y') (L0 y0) = L0 (⊴-keep y0)
-lemma3' (T0 y y') (L1 y0) = L1 (lemma1 y0)
-lemma3' (T1 y) (L0 y') = L0 (⊴-keep y')
-lemma3' (T1 y) (L1 y') = L1 (lemma3' y y')
-lemma3' (T2 y y') l = L1 (lemma3' y' l)
+lemma3' (T0 d r) (L0 e) = L0 (⊴-keep e)
+lemma3' (T0 d r) (L1 l) = L1 (lemma1 l)
+lemma3' (T1 t) (L0 e) = L0 (⊴-keep e)
+lemma3' (T1 t) (L1 l) = L1 (lemma3' t l)
+lemma3' (T2 d t) l = L1 (lemma3' t l)
 
 lemma3 : ∀ {ws zs a} →
          T a ws zs → good ws → good zs
-lemma3 (T0 y y') (good0 y0) = good0 (lemma1 y0)
-lemma3 (T0 y y') (good1 y0) = good1 y0
-lemma3 (T1 y) (good0 y') = good0 (lemma3' y y')
-lemma3 (T1 y) (good1 y') = good1 (lemma3 y y')
-lemma3 (T2 y y') g = good1 (lemma3 y' g)
+lemma3 (T0 d r) (good0 l) = good0 (lemma1 l)
+lemma3 (T0 d r) (good1 g) = good1 g
+lemma3 (T1 t) (good0 l) = good0 (lemma3' t l)
+lemma3 (T1 t) (good1 g) = good1 (lemma3 t g)
+lemma3 (T2 d t) g = good1 (lemma3 t g)
 
 lemma4 : ∀ {ws zs w} a →
           R a (w ∷ ws) zs → T a (w ∷ ws) zs
 lemma4 lA (R1 R0) = T0 lA≢lB R0
-lemma4 lA (R1 (R1 y)) = T1 (lemma4 lA (R1 y))
+lemma4 lA (R1 (R1 r)) = T1 (lemma4 lA (R1 r))
 lemma4 lB (R1 R0) = T0 lB≢lA R0
-lemma4 lB (R1 (R1 y)) = T1 (lemma4 lB (R1 y))
+lemma4 lB (R1 (R1 r)) = T1 (lemma4 lB (R1 r))
 
 letter≢ : ∀ {a b c} →
              a ≢L b → c ≢L a → c ≡ b
