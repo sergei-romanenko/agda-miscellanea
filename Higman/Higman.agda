@@ -64,8 +64,8 @@ data T (a : Letter) : List Word → List Word → Set where
   T0 : ∀ {w ws zs} →
        R (~ a) ws zs → T a (w ∷ zs) ((a ∷ w) ∷ zs)
   T1 : ∀ {w ws zs} →
-        T a ws zs → T a (w ∷ ws) ((a ∷ w) ∷ zs)
-  T2 : ∀  {w ws zs} →
+       T a ws zs → T a (w ∷ ws) ((a ∷ w) ∷ zs)
+  T2 : ∀ {w ws zs} →
        T a ws zs → T a ws (((~ a) ∷ w) ∷ zs)
 
 -- Note the subtle scope of ∀ w !
@@ -138,21 +138,34 @@ lB ≟L lB = yes refl
 
 mutual
 
+  -- Now the type of prop2 is OK, but the termination check fails.
+
   prop2 : ∀ {xs ys} a →
           bar xs → bar ys →
           (zs : List Word) →
           T a xs zs → T (~ a) ys zs → bar zs
   prop2 a (bar1 g) b-y zs Ta Tb = bar1 (lemma3 Ta g)
   prop2 a (bar2 bwx) (bar1 g) zs Ta Tb = bar1 (lemma3 Tb g)
-  prop2 lA (bar2 bwx) (bar2 bwy) zs Ta Tb =
-    bar2 prop2A
-      where prop2A : (w : Word) → bar (w ∷ zs)
-            prop2A [] = prop1 zs
-            prop2A (lA ∷ cs) =
-              prop2 lA (bwx cs) (bwy {!!}) 
-                    ((lA ∷ cs) ∷ zs) (T1 Ta) {!!}
-            prop2A (lB ∷ cs) = {!!}
-  prop2 lB (bar2 bwx) (bar2 bwy) zs Ta Tb = {!!}
+  prop2 lA (bar2 bwx) (bar2 bwy) zs Ta Tb = bar2 prop2A
+    where
+      prop2A : (w : Word) → bar (w ∷ zs)
+      prop2A [] = prop1 zs
+      prop2A (lA ∷ cs) =
+        prop2 lA (bwx cs) (bar2 bwy) 
+              ((lA ∷ cs) ∷ zs) (T1 Ta) (T2 Tb)
+      prop2A (lB ∷ cs) =
+        prop2 lA (bar2 bwx) (bwy cs)
+                  ((lB ∷ cs) ∷ zs) (T2 Ta) (T1 Tb)
+  prop2 lB (bar2 bwx) (bar2 bwy) zs Ta Tb = bar2 prop2B
+    where
+      prop2B : (w : Word) → bar (w ∷ zs)
+      prop2B [] = prop1 zs
+      prop2B (lA ∷ cs) =
+        prop2 lB (bar2 bwx) (bwy cs) 
+              ((lA ∷ cs) ∷ zs) (T2 Ta) (T1 Tb)
+      prop2B (lB ∷ cs) =
+        prop2 lB (bwx cs) (bar2 bwy)
+              ((lB ∷ cs) ∷ zs) (T1 Ta) (T2 Tb)
 
 mutual
 
