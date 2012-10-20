@@ -138,34 +138,30 @@ lB ≟L lB = yes refl
 
 mutual
 
-  -- Now the type of prop2 is OK, but the termination check fails.
+  -- Now the type of prop2 is OK, and the termination check is OK.
 
-  prop2 : ∀ {xs ys} a →
-          bar xs → bar ys →
-          (zs : List Word) →
+  prop2 : ∀ a → ∀ {xs} → bar xs → ∀ {ys} → bar ys → ∀ zs →
           T a xs zs → T (~ a) ys zs → bar zs
-  prop2 a (bar1 g) b-y zs Ta Tb = bar1 (lemma3 Ta g)
-  prop2 a (bar2 bwx) (bar1 g) zs Ta Tb = bar1 (lemma3 Tb g)
-  prop2 lA (bar2 bwx) (bar2 bwy) zs Ta Tb = bar2 prop2A
+  prop2 lA b-x b-y zs Ta Tb = prop2l b-x b-y zs Ta Tb
+  prop2 lB b-x b-y zs Ta Tb = prop2l b-y b-x zs Tb Ta
+
+  prop2l : ∀ {xs} → bar xs → ∀ {ys} → bar ys → ∀ zs →
+           T lA xs zs → T lB ys zs → bar zs
+  prop2l (bar1 gx) b-y zs Ta Tb = bar1 (lemma3 Ta gx)
+  prop2l (bar2 bwx) b-y zs Ta Tb = prop2l' b-y zs Ta Tb
     where
-      prop2A : (w : Word) → bar (w ∷ zs)
-      prop2A [] = prop1 zs
-      prop2A (lA ∷ cs) =
-        prop2 lA (bwx cs) (bar2 bwy) 
-              ((lA ∷ cs) ∷ zs) (T1 Ta) (T2 Tb)
-      prop2A (lB ∷ cs) =
-        prop2 lA (bar2 bwx) (bwy cs)
-                  ((lB ∷ cs) ∷ zs) (T2 Ta) (T1 Tb)
-  prop2 lB (bar2 bwx) (bar2 bwy) zs Ta Tb = bar2 prop2B
-    where
-      prop2B : (w : Word) → bar (w ∷ zs)
-      prop2B [] = prop1 zs
-      prop2B (lA ∷ cs) =
-        prop2 lB (bar2 bwx) (bwy cs) 
-              ((lA ∷ cs) ∷ zs) (T2 Ta) (T1 Tb)
-      prop2B (lB ∷ cs) =
-        prop2 lB (bwx cs) (bar2 bwy)
-              ((lB ∷ cs) ∷ zs) (T1 Ta) (T2 Tb)
+      prop2l' : ∀ {ys} → bar ys → ∀ zs →
+                T lA _ zs → T lB ys zs → bar zs
+      prop2l' (bar1 gy) zs' Ta' Tb' = bar1 (lemma3 Tb' gy)
+      prop2l' (bar2 bwy) zs' Ta' Tb' = bar2 prop2l''
+        where
+          prop2l'' : (w : Word) → bar (w ∷ zs')
+          prop2l'' [] = prop1 zs'
+          prop2l'' (lA ∷ cs) =
+            prop2l (bwx cs) (bar2 bwy) ((lA ∷ cs) ∷ zs') (T1 Ta') (T2 Tb')
+          prop2l'' (lB ∷ cs) =
+            prop2l' (bwy cs) ((lB ∷ cs) ∷ zs') (T2 Ta') (T1 Tb')
+
 
 mutual
 
