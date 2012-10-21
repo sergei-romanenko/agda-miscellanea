@@ -135,32 +135,31 @@ lA ≟L lB = no (λ ())
 lB ≟L lA = no (λ ())
 lB ≟L lB = yes refl
 
-
 mutual
-
-  -- Now the type of prop2 is OK, and the termination check is OK.
 
   prop2 : ∀ a → ∀ {xs} → bar xs → ∀ {ys} → bar ys → ∀ zs →
           T a xs zs → T (~ a) ys zs → bar zs
-  prop2 lA b-x b-y zs Ta Tb = prop2l b-x b-y zs Ta Tb
-  prop2 lB b-x b-y zs Ta Tb = prop2l b-y b-x zs Tb Ta
+  prop2 lA b-xs b-ys zs Ta Tb = prop2I b-xs b-ys zs Ta Tb
+  prop2 lB b-xs b-ys zs Ta Tb = prop2I b-ys b-xs zs Tb Ta
 
-  prop2l : ∀ {xs} → bar xs → ∀ {ys} → bar ys → ∀ zs →
+  prop2I : ∀ {xs} → bar xs → ∀ {ys} → bar ys → ∀ zs →
            T lA xs zs → T lB ys zs → bar zs
-  prop2l (bar1 gx) b-y zs Ta Tb = bar1 (lemma3 Ta gx)
-  prop2l (bar2 bwx) b-y zs Ta Tb = prop2l' b-y zs Ta Tb
+  prop2I (bar1 gx)  b-ys zs Ta Tb = bar1 (lemma3 Ta gx)
+  prop2I (bar2 b2x) b-ys zs Ta Tb = prop2I' b2x b-ys zs Ta Tb
+
+  prop2I' : ∀ {xs} → (∀ w → bar (w ∷ xs)) → ∀ {ys} → bar ys → ∀ zs →
+            T lA xs zs → T lB ys zs → bar zs
+  prop2I' b2x (bar1 gy)  zs' Ta' Tb' = bar1 (lemma3 Tb' gy)
+  prop2I' b2x (bar2 b2y) zs' Ta' Tb' = bar2 prop2Ic
     where
-      prop2l' : ∀ {ys} → bar ys → ∀ zs →
-                T lA _ zs → T lB ys zs → bar zs
-      prop2l' (bar1 gy) zs' Ta' Tb' = bar1 (lemma3 Tb' gy)
-      prop2l' (bar2 bwy) zs' Ta' Tb' = bar2 prop2l''
-        where
-          prop2l'' : (w : Word) → bar (w ∷ zs')
-          prop2l'' [] = prop1 zs'
-          prop2l'' (lA ∷ cs) =
-            prop2l (bwx cs) (bar2 bwy) ((lA ∷ cs) ∷ zs') (T1 Ta') (T2 Tb')
-          prop2l'' (lB ∷ cs) =
-            prop2l' (bwy cs) ((lB ∷ cs) ∷ zs') (T2 Ta') (T1 Tb')
+      prop2Ic : (w : Word) → bar (w ∷ zs')
+      prop2Ic [] = prop1 zs'
+      prop2Ic (lA ∷ cs) =
+        prop2I  (b2x cs) (bar2 b2y)
+                ((lA ∷ cs) ∷ zs') (T1 Ta') (T2 Tb')
+      prop2Ic (lB ∷ cs) =
+        prop2I' b2x (b2y cs)   
+                ((lB ∷ cs) ∷ zs') (T2 Ta') (T1 Tb')
 
 
 mutual
