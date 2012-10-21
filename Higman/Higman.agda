@@ -139,45 +139,60 @@ mutual
 
   prop2 : ∀ a → ∀ {xs} → bar xs → ∀ {ys} → bar ys → ∀ zs →
           T a xs zs → T (~ a) ys zs → bar zs
-  prop2 lA b-xs b-ys zs Ta Tb = prop2I b-xs b-ys zs Ta Tb
-  prop2 lB b-xs b-ys zs Ta Tb = prop2I b-ys b-xs zs Tb Ta
+  prop2 lA xsb ysb zs Ta Tb = prop2I xsb ysb zs Ta Tb
+  prop2 lB xsb ysb zs Ta Tb = prop2I ysb xsb zs Tb Ta
 
   prop2I : ∀ {xs} → bar xs → ∀ {ys} → bar ys → ∀ zs →
            T lA xs zs → T lB ys zs → bar zs
-  prop2I (bar1 gx)  b-ys zs Ta Tb = bar1 (lemma3 Ta gx)
-  prop2I (bar2 b2x) b-ys zs Ta Tb = prop2I' b2x b-ys zs Ta Tb
+  prop2I (bar1 gx)  ysb zs Ta Tb = bar1 (lemma3 Ta gx)
+  prop2I (bar2 b2x) ysb zs Ta Tb = prop2I' b2x ysb zs Ta Tb
 
   prop2I' : ∀ {xs} → (∀ w → bar (w ∷ xs)) → ∀ {ys} → bar ys → ∀ zs →
             T lA xs zs → T lB ys zs → bar zs
-  prop2I' b2x (bar1 gy)  zs' Ta' Tb' = bar1 (lemma3 Tb' gy)
-  prop2I' b2x (bar2 b2y) zs' Ta' Tb' = bar2 prop2Ic
+  prop2I' b2x (bar1 gy)  zs Ta Tb = bar1 (lemma3 Tb gy)
+  prop2I' b2x (bar2 b2y) zs Ta Tb = bar2 prop2Iw
     where
-      prop2Ic : (w : Word) → bar (w ∷ zs')
-      prop2Ic [] = prop1 zs'
-      prop2Ic (lA ∷ cs) =
+      prop2Iw : (w : Word) → bar (w ∷ zs)
+      prop2Iw [] = prop1 zs
+      prop2Iw (lA ∷ cs) =
         prop2I  (b2x cs) (bar2 b2y)
-                ((lA ∷ cs) ∷ zs') (T1 Ta') (T2 Tb')
-      prop2Ic (lB ∷ cs) =
+                ((lA ∷ cs) ∷ zs) (T1 Ta) (T2 Tb)
+      prop2Iw (lB ∷ cs) =
         prop2I' b2x (b2y cs)   
-                ((lB ∷ cs) ∷ zs') (T2 Ta') (T1 Tb')
-
+                ((lB ∷ cs) ∷ zs) (T2 Ta) (T1 Tb)
 
 mutual
 
-  prop3 : ∀ a x xs →
-          bar (x ∷ xs) →
-          (zs : List Word) →
-          R a (x ∷ xs) zs → bar zs
-  prop3 a x xs (bar1 g) zs Ra = bar1 (lemma2 Ra g)
-  prop3 lA x xs (bar2 b) zs Ra = bar2 prop3'
-    where prop3' : (w : Word) → bar (w ∷ zs)
-          prop3' [] = prop1 zs
-          prop3' (lA ∷ cs) =
-            prop3 lA cs (x ∷ xs) (b cs) ((lA ∷ cs) ∷ zs) (R1 Ra)
-          prop3' (lB ∷ cs) =
-            prop2 lB {!!} {!!} ((lB ∷ cs) ∷ zs) {!!} {!!}
-            --prop3 lB cs (x ∷ xs) (b cs) ((lB ∷ cs) ∷ zs) {!-l!}
-  prop3 lB x xs (bar2 b) zs Ra = {!!}
+  prop3 : ∀ a x xs → bar (x ∷ xs) → ∀ zs →
+            R a (x ∷ xs) zs → bar zs
+  prop3 lA x xs xsb zs Ra = prop3Ia x xs xsb zs Ra
+  prop3 lB x xs xsb zs Ra = prop3Ib x xs xsb zs Ra
+
+  prop3Ia : ∀ x xs → bar (x ∷ xs) → ∀ zs →
+             R lA (x ∷ xs) zs → bar zs
+  prop3Ia x xs (bar1 g) zs Ra = bar1 (lemma2 Ra g)
+  prop3Ia x xs (bar2 b2x) zs Ra = bar2 prop3Iaw
+    where
+      prop3Iaw : (w : Word) → bar (w ∷ zs)
+      prop3Iaw [] = prop1 zs
+      prop3Iaw (lA ∷ cs) =
+        prop3Ia cs (x ∷ xs) (b2x cs) ((lA ∷ cs) ∷ zs) (R1 Ra)
+      prop3Iaw (lB ∷ cs) =
+        prop2 lB (prop3Iaw cs) (bar2 b2x) ((lB ∷ cs) ∷ zs)
+              (T0 Ra) (T2 (lemma4 Ra))
+
+  prop3Ib : ∀ x xs → bar (x ∷ xs) → ∀ zs →
+             R lB (x ∷ xs) zs → bar zs
+  prop3Ib x xs (bar1 g) zs Rb = bar1 (lemma2 Rb g)
+  prop3Ib x xs (bar2 b2x) zs Rb = bar2 prop3Ibw
+    where
+      prop3Ibw : (w : Word) → bar (w ∷ zs)
+      prop3Ibw [] = prop1 zs
+      prop3Ibw (lB ∷ cs) =
+        prop3Ib cs (x ∷ xs) (b2x cs) ((lB ∷ cs) ∷ zs) (R1 Rb)
+      prop3Ibw (lA ∷ cs) =
+        prop2 lA (prop3Ibw cs) (bar2 b2x) ((lA ∷ cs) ∷ zs)
+              (T0 Rb) (T2 (lemma4 Rb))
 
 higman' : ∀ w → bar (w ∷ [])
 higman' [] = prop1 []
