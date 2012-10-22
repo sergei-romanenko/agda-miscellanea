@@ -1,17 +1,15 @@
-{- This program is free software; you can redistribute it and/or      -}
-{- modify it under the terms of the GNU Lesser General Public License -}
-{- as published by the Free Software Foundation; either version 2.1   -}
-{- of the License, or (at your option) any later version.             -}
-{-                                                                    -}
-{- This program is distributed in the hope that it will be useful,    -}
-{- but WITHOUT ANY WARRANTY; without even the implied warranty of     -}
-{- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the      -}
-{- GNU General Public License for more details.                       -}
-{-                                                                    -}
-{- You should have received a copy of the GNU Lesser General Public   -}
-{- License along with this program; if not, write to the Free         -}
-{- Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA -}
-{- 02110-1301 USA                                                     -}
+{-
+    Title:      Higman.Agda
+    Author:     Sergei Romanenko, KIAM Moscow
+
+    This version is produced by rewriting the proof presented in
+
+      S. Berghofer. A constructive proof of Higman's lemma in Isabelle.
+      In Types for Proofs and Programs, TYPES'04. LNCS, 3085: 66-82.
+      Springer Verlag, 2004. 
+
+    from Isabelle to Agda.
+-}
 
 module Higman where
 
@@ -21,6 +19,8 @@ open import Data.Product
 open import Data.Sum
 open import Data.Unit
 open import Data.Empty
+
+open import Function
 
 open import Relation.Nullary
 open import Relation.Binary
@@ -93,8 +93,8 @@ lemma3' : ∀ {vs ws xs x} →
           T x vs ws → L xs vs → L (x ∷ xs) ws
 lemma3' (T0 ab r) (L0 e) = L0 (⊴-keep e)
 lemma3' (T0 ab r) (L1 l) = L1 (lemma1 l)
-lemma3' (T1 t) (L0 e) = L0 (⊴-keep e)
-lemma3' (T1 t) (L1 l) = L1 (lemma3' t l)
+lemma3' (T1 t)    (L0 e) = L0 (⊴-keep e)
+lemma3' (T1 t)    (L1 l) = L1 (lemma3' t l)
 lemma3' (T2 ab t) (L0 e) = L1 (lemma3' t (L0 e))
 lemma3' (T2 ab t) (L1 l) = L1 (lemma3' t (L1 l))
 
@@ -102,8 +102,8 @@ lemma3 : ∀ {ws zs a} →
          T a ws zs → good ws → good zs
 lemma3 (T0 ab r) (good0 l) = good0 (lemma1 l)
 lemma3 (T0 ab r) (good1 g) = good1 g
-lemma3 (T1 t) (good0 l) = good0 (lemma3' t l)
-lemma3 (T1 t) (good1 g) = good1 (lemma3 t g)
+lemma3 (T1 t)    (good0 l) = good0 (lemma3' t l)
+lemma3 (T1 t)    (good1 g) = good1 (lemma3 t g)
 lemma3 (T2 ab t) g = good1 (lemma3 t g)
 
 lemma4 : ∀ {a w ws zs} →
@@ -140,19 +140,27 @@ mutual
            ∀ {ys} → bar ys → ∀ {zs} →
              T a xs zs → T b ys zs → bar zs
   prop2I a≢b b2x (bar1 gy) Ta Tb = bar1 (lemma3 Tb gy)
-  prop2I {a} {b} a≢b b2x (bar2 b2y) {zs} Ta Tb = bar2 prop2Iw
+  prop2I {a} {b} a≢b {xs} b2x {ys} (bar2 b2y) {zs} Ta Tb = bar2 prop2Iw
     where
       prop2Iw : (w : Word) → bar (w ∷ zs)
       prop2Iw [] = prop1 zs
       prop2Iw (c ∷ cs) with c ≟L a
       prop2Iw (c ∷ cs) | yes c≡a rewrite c≡a =
-        prop2 a≢b (b2x cs) (bar2 b2y)
-                (T1 Ta) (T2 (λ b≡a → a≢b (sym b≡a)) Tb)
+        let b≢a : b ≢ a
+            b≢a = λ b≡a → a≢b (sym b≡a)
+        in prop2 a≢b (b2x cs) (bar2 b2y)
+                 (T1 Ta     ∶ T a (cs ∷ xs) ((a ∷ cs) ∷ zs))
+                 (T2 b≢a Tb ∶ T b ys ((a ∷ cs) ∷ zs))
       prop2Iw (c ∷ cs) | no c≢a =
-        prop2I a≢b b2x (b2y cs)
-               (T2 (λ a≡c → c≢a (sym a≡c)) Ta)
-               (subst (λ x → T b (cs ∷ _) ((x ∷ cs) ∷ zs))
-                      (sym (≢abc a≢b c≢a)) (T1 Tb))
+        let a≢c : a ≢ c
+            a≢c = λ a≡c → c≢a (sym a≡c)
+            b≡c : b ≡ c
+            b≡c = sym (≢abc a≢b c≢a)
+            T1Tb  : T b (cs ∷ ys) ((b ∷ cs) ∷ zs)
+            T1Tb  = (T1 Tb)
+            T1Tb' : T b (cs ∷ ys) ((c ∷ cs) ∷ zs)
+            T1Tb' = subst (λ z → T b (cs ∷ ys) ((z ∷ cs) ∷ zs)) b≡c (T1 Tb)
+        in prop2I a≢b b2x (b2y cs) (T2 a≢c Ta) T1Tb'
 
 
 mutual
@@ -164,7 +172,7 @@ mutual
   prop3I : ∀ {a x xs} → bar (x ∷ xs) → ∀ {zs} →
              R a (x ∷ xs) zs → bar zs
   prop3I (bar1 g) Ra = bar1 (lemma2 Ra g)
-  prop3I {a} (bar2 b2x) {zs} Ra = bar2 prop3Iw
+  prop3I {a} {x} {xs} (bar2 b2x) {zs} Ra = bar2 prop3Iw
     where
       prop3Iw : (w : Word) → bar (w ∷ zs)
       prop3Iw [] = prop1 zs
@@ -172,8 +180,13 @@ mutual
       prop3Iw (c ∷ cs) | yes c≡a rewrite c≡a =
         prop3I (b2x cs) (R1 Ra)
       prop3Iw (c ∷ cs) | no c≢a =
-        prop2 c≢a (prop3Iw cs) (bar2 b2x)
-              (T0 c≢a Ra) (T2 (λ a≡c → c≢a (sym a≡c)) (lemma4 Ra))
+        let a≢c : a ≢ c
+            a≢c = λ a≡c → c≢a (sym a≡c)
+        in prop2 c≢a
+                 (prop3Iw cs ∶ bar (cs ∷ zs))
+                 (bar2 b2x   ∶ bar (x ∷ xs))
+                 (T0 c≢a Ra          ∶ T c (cs ∷ zs) ((c ∷ cs) ∷ zs))
+                 (T2 a≢c (lemma4 Ra) ∶ T a (x ∷ xs) ((c ∷ cs) ∷ zs))
 
 higman' :  ∀ w → bar (w ∷ [])
 higman' [] = prop1 []
