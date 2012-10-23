@@ -163,30 +163,24 @@ mutual
         in prop2I a≢b b2x (b2y cs) (T2 a≢c Ta) T1Tb'
 
 
-mutual
-
-  prop3 : ∀ {a x xs} → bar (x ∷ xs) → ∀ {zs} →
-            R a (x ∷ xs) zs → bar zs
-  prop3 xsb Ra = prop3I xsb Ra
-
-  prop3I : ∀ {a x xs} → bar (x ∷ xs) → ∀ {zs} →
-             R a (x ∷ xs) zs → bar zs
-  prop3I (bar1 g) Ra = bar1 (lemma2 Ra g)
-  prop3I {a} {x} {xs} (bar2 b2x) {zs} Ra = bar2 prop3Iw
-    where
-      prop3Iw : (w : Word) → bar (w ∷ zs)
-      prop3Iw [] = prop1 zs
-      prop3Iw (c ∷ cs) with c ≟L a
-      prop3Iw (c ∷ cs) | yes c≡a rewrite c≡a =
-        prop3I (b2x cs) (R1 Ra)
-      prop3Iw (c ∷ cs) | no c≢a =
-        let a≢c : a ≢ c
-            a≢c = λ a≡c → c≢a (sym a≡c)
-        in prop2 c≢a
-                 (prop3Iw cs ∶ bar (cs ∷ zs))
-                 (bar2 b2x   ∶ bar (x ∷ xs))
-                 (T0 c≢a Ra          ∶ T c (cs ∷ zs) ((c ∷ cs) ∷ zs))
-                 (T2 a≢c (lemma4 Ra) ∶ T a (x ∷ xs) ((c ∷ cs) ∷ zs))
+prop3 : ∀ {a x xs} → bar (x ∷ xs) → ∀ {zs} →
+          R a (x ∷ xs) zs → bar zs
+prop3 (bar1 g) Ra = bar1 (lemma2 Ra g)
+prop3 {a} {x} {xs} (bar2 b2x) {zs} Ra = bar2 prop3w
+  where
+    prop3w : (w : Word) → bar (w ∷ zs)
+    prop3w [] = prop1 zs
+    prop3w (c ∷ cs) with c ≟L a
+    prop3w (c ∷ cs) | yes c≡a rewrite c≡a =
+      prop3 (b2x cs) (R1 Ra)
+    prop3w (c ∷ cs) | no c≢a =
+      let a≢c : a ≢ c
+          a≢c = λ a≡c → c≢a (sym a≡c)
+      in prop2 c≢a
+               (prop3w cs ∶ bar (cs ∷ zs))
+               (bar2 b2x   ∶ bar (x ∷ xs))
+               (T0 c≢a Ra          ∶ T c (cs ∷ zs) ((c ∷ cs) ∷ zs))
+               (T2 a≢c (lemma4 Ra) ∶ T a (x ∷ xs) ((c ∷ cs) ∷ zs))
 
 higman' :  ∀ w → bar (w ∷ [])
 higman' [] = prop1 []
