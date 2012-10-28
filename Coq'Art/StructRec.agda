@@ -117,3 +117,10 @@ module div2-≤₅ where
                              suc n
                            ∎
 
+_+′_ : ℕ → ℕ → ℕ
+zero  +′ n = n
+suc m +′ n = m +′ suc n
+
+m+′sn : ∀ m n → m +′ suc n ≡ suc (m +′ n)
+m+′sn zero n = refl
+m+′sn (suc m) n = m+′sn m (suc n)
