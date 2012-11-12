@@ -9,13 +9,24 @@ module GeneralRec where
   open import Data.Stream
 
   open import Relation.Nullary
-  open import Relation.Unary
+  open import Relation.Unary hiding (Decidable)
   open import Relation.Binary
+  open import Relation.Binary.PropositionalEquality
+    renaming ([_] to ≡[_])
 
   open import Function
   open import Induction
   open import Induction.WellFounded
   open import Coinduction
+
+  open ≡-Reasoning
+
+  partition : {A : Set} (xs : List A) → List A × List A
+  partition [] = [] , []
+  partition (x ∷ []) = [ x ] , []
+  partition (x₁ ∷ x₂ ∷ xs) with partition xs
+  partition (x₁ ∷ x₂ ∷ xs) | xs₁ , xs₂ =
+    x₁ ∷ xs₁ , x₂ ∷ xs₂
 
   module MergeSort (A : Set) (le : A → A → Bool) where
   
@@ -28,13 +39,6 @@ module GeneralRec where
     merge : (xs ys : List A) → List A
     merge [] ys = ys
     merge (x ∷ xs) ys = insert x (merge xs ys)
-
-    partition : (xs : List A) → List A × List A
-    partition [] = [] , []
-    partition (x ∷ []) = [ x ] , []
-    partition (x₁ ∷ x₂ ∷ xs) with partition xs
-    partition (x₁ ∷ x₂ ∷ xs) | xs₁ , xs₂ =
-      x₁ ∷ xs₁ , x₂ ∷ xs₂
 
   module MergeSort₁ (A : Set) (le : A → A → Bool) where
     open module ms = MergeSort A le
@@ -66,39 +70,69 @@ Well-founded : ∀ {a} {A : Set a} → Rel A a → Set a
 Well-founded _<_ = ∀ x → Acc _<_ x
 -}
 
-{-
-  data IsChain {A} (R : A → A → Set) : Stream A → Set where
-    chainCons : ∀ (x y : A) {s : Stream A} → R y x →
-      IsChain R (y ∷ ♯ s ) →
-      IsChain R (x ∷ ♯ (y ∷ ♯ s))
-
-  noChains' : ∀ {A} (R : A → A → Set) {x} → Acc R x → ∀ {s} →
-                ¬ IsChain R (x ∷ s)
-  noChains' R {x} (acc rs) (chainCons .x y Ryx ch-y) = {!!}
--}
-
   <′-ℕ-wf : Well-founded _<′_
   <′-ℕ-wf x = acc (help x)
     where help : ∀ x y → y <′ x → Acc (_<′_) y
           help .(suc y) y ≤′-refl = <′-ℕ-wf y
-          help .(suc n) y (≤′-step {n} m≤′n) = help n y m≤′n
+          help .(suc x) y (≤′-step {x} m≤′n) = help x y m≤′n
 
-  module Inverse-image-Well-founded
-         {ℓ} {A B : Set ℓ} (_<_ : Rel B ℓ) (f : A → B)
-    where
+  ≤-refl : ∀ {n} → n ≤ n
+  ≤-refl {zero} = z≤n
+  ≤-refl {suc n} = s≤s ≤-refl
 
-    _≺_ : Rel A ℓ
-    x ≺ y = f x < f y
+  ≤-step : ∀ {m n} → m ≤ n → m ≤ suc n
+  ≤-step z≤n = z≤n
+  ≤-step (s≤s m≤n) = s≤s (≤-step m≤n)
 
-    ii-acc : ∀ {x} → Acc _<_ (f x) → Acc _≺_ x
-    ii-acc (acc g) = acc (λ y fy<fx → ii-acc (g (f y) fy<fx))
+  ≤-trans : ∀ {x y z} → x ≤ y → y ≤ z → x ≤ z
+  ≤-trans z≤n _ = z≤n
+  ≤-trans (s≤s x≤y) (s≤s y≤z) = s≤s (≤-trans x≤y y≤z)
 
-    ii-wf : Well-founded _<_ →  Well-founded _≺_
-    ii-wf wf x = ii-acc (wf (f x))
+  ≤′-≤ : ∀ {m n} → m ≤′ n → m ≤ n
+  ≤′-≤ ≤′-refl = ≤-refl
+  ≤′-≤ (≤′-step m≤′n) = ≤-step (≤′-≤ m≤′n)
 
-  module length-wf {A} where
-    open Inverse-image-Well-founded {_}{List A} _<′_ length public
+  module Lenth-wf {A : Set} = Inverse-image {_} {List A} {ℕ} {_<′_} length
+    renaming(accessible to length-acc; well-founded to length-wf )
 
-    wf : Well-founded _≺_
-    wf = ii-wf <′-ℕ-wf
+  ≤′-zero : ∀ {m} → 0 ≤′ m
+  ≤′-zero {zero} = ≤′-refl
+  ≤′-zero {suc n} = ≤′-step ≤′-zero
 
+  ≤′-suc : ∀ {m n} → m ≤′ n → suc m ≤′ suc n
+  ≤′-suc ≤′-refl = ≤′-refl
+  ≤′-suc (≤′-step m≤′n) = ≤′-step (≤′-suc m≤′n)
+
+  ≤-≤′ : ∀ {m n} → m ≤ n → m ≤′ n
+  ≤-≤′ z≤n = ≤′-zero
+  ≤-≤′ (s≤s m≤n) = ≤′-suc (≤-≤′ m≤n)
+
+  s≤′-elim : ∀ {m n} → suc m ≤′ n → m ≤′ n
+  s≤′-elim ≤′-refl = ≤′-step ≤′-refl
+  s≤′-elim (≤′-step m≤′n) = ≤′-step (s≤′-elim m≤′n)
+
+  _≤′?_ : Decidable _≤′_
+  m ≤′? n with m ≤? n
+  ... | yes m≤n = yes (≤-≤′ m≤n)
+  ... | no ¬m≤n = no  (λ m≤′n → ¬m≤n (≤′-≤ m≤′n))
+
+  module Partition-lemma {A : Set} where
+    _≼_ : List A → List A → Set
+    xs ≼ ys = length xs ≤′ length ys
+ 
+    partition-size : ∀ (zs : List A) l →
+                     2 ≤′ length zs → length zs ≤′ l →
+                     proj₁ (partition zs) ≼ zs × proj₂ (partition zs) ≼ zs
+    partition-size [] l 2≤len len≤l = ≤′-refl , ≤′-refl
+    partition-size (x ∷ []) l 2≤len len≤l = ≤′-refl , ≤′-step ≤′-refl
+    partition-size (x ∷ y ∷ zs) l 2≤len len≤l with 2 ≤′? length zs
+    partition-size (x ∷ y ∷ zs) l 2≤len len≤l | yes 2≤len'
+      with partition-size zs l 2≤len' (s≤′-elim (s≤′-elim len≤l))
+    partition-size (x ∷ y ∷ zs) l 2≤len len≤l | yes 2≤len' | s₁ , s₂ =
+      ≤′-suc (≤′-step s₁) , ≤′-suc (≤′-step s₂)
+    partition-size (x ∷ y ∷ []) l 2≤len len≤l | no ¬2≤len' =
+      ≤′-step ≤′-refl , ≤′-step ≤′-refl
+    partition-size (x ∷ y ∷ x' ∷ []) l 2≤len len≤l | no ¬2≤len' =
+      2≤len , ≤′-step (≤′-step ≤′-refl)
+    partition-size (x ∷ y ∷ x' ∷ y' ∷ zs) l 2≤len len≤l | no ¬2≤len' =
+      ⊥-elim (¬2≤len' (≤′-suc (≤′-suc ≤′-zero)))
