@@ -117,22 +117,32 @@ Well-founded _<_ = ∀ x → Acc _<_ x
   ... | no ¬m≤n = no  (λ m≤′n → ¬m≤n (≤′-≤ m≤′n))
 
   module Partition-lemma {A : Set} where
-    _≼_ : List A → List A → Set
-    xs ≼ ys = length xs ≤′ length ys
+    _≺_ : List A → List A → Set
+    xs ≺ ys = suc (length xs) ≤′ length ys
  
-    partition-size : ∀ (zs : List A) l →
-                     2 ≤′ length zs → length zs ≤′ l →
-                     proj₁ (partition zs) ≼ zs × proj₂ (partition zs) ≼ zs
-    partition-size [] l 2≤len len≤l = ≤′-refl , ≤′-refl
-    partition-size (x ∷ []) l 2≤len len≤l = ≤′-refl , ≤′-step ≤′-refl
-    partition-size (x ∷ y ∷ zs) l 2≤len len≤l with 2 ≤′? length zs
-    partition-size (x ∷ y ∷ zs) l 2≤len len≤l | yes 2≤len'
-      with partition-size zs l 2≤len' (s≤′-elim (s≤′-elim len≤l))
-    partition-size (x ∷ y ∷ zs) l 2≤len len≤l | yes 2≤len' | s₁ , s₂ =
+    partition-size : ∀ (zs : List A) → 2 ≤′ length zs →
+                     proj₁ (partition zs) ≺ zs × proj₂ (partition zs) ≺ zs
+    partition-size [] ()
+    partition-size (x ∷ []) (≤′-step ())
+    partition-size (x ∷ y ∷ zs) 2≤len with 2 ≤′? length zs
+    ... | yes 2≤len' with partition-size zs 2≤len'
+    ... | s₁ , s₂ =
       ≤′-suc (≤′-step s₁) , ≤′-suc (≤′-step s₂)
-    partition-size (x ∷ y ∷ []) l 2≤len len≤l | no ¬2≤len' =
-      ≤′-step ≤′-refl , ≤′-step ≤′-refl
-    partition-size (x ∷ y ∷ x' ∷ []) l 2≤len len≤l | no ¬2≤len' =
-      2≤len , ≤′-step (≤′-step ≤′-refl)
-    partition-size (x ∷ y ∷ x' ∷ y' ∷ zs) l 2≤len len≤l | no ¬2≤len' =
+    partition-size (x ∷ y ∷ []) 2≤len | no ¬2≤len' =
+      ≤′-refl , ≤′-refl
+    partition-size (x ∷ y ∷ x' ∷ []) 2≤len | no ¬2≤len' =
+      ≤′-refl , ≤′-step ≤′-refl
+    partition-size (x ∷ y ∷ x' ∷ y' ∷ zs) 2≤len | no ¬2≤len' =
       ⊥-elim (¬2≤len' (≤′-suc (≤′-suc ≤′-zero)))
+
+  module MergeSort₂ (A : Set) (le : A → A → Bool) where
+    open module ms = MergeSort A le
+    open module mp = Partition-lemma {A}
+
+    mergeSort : (xs : List A)→ Acc _≺_ xs → List A
+    mergeSort xs (acc g) with 2 ≤′? (length xs)
+    mergeSort xs (acc g) | no _ = xs
+    mergeSort xs (acc g) | yes  2≤′len
+      with partition xs | partition-size xs 2≤′len
+    ... | xs₁ , xs₂ | g₁ , g₂ =
+      merge (mergeSort xs₁ (g xs₁ g₁)) (mergeSort xs₂ (g xs₂ g₂))
