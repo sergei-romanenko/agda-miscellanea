@@ -5,6 +5,8 @@ open import Data.Product
 
 open import Function
 
+open import Data.Nat.Properties
+
 open import Relation.Binary.PropositionalEquality
 
 div2 : ℕ → ℕ
@@ -12,29 +14,22 @@ div2 zero = zero
 div2 (suc zero) = zero
 div2 (suc (suc n)) = suc (div2 n)
 
-n≤sn : ∀ n → n ≤ suc n
-n≤sn zero = z≤n
-n≤sn (suc n) = s≤s (n≤sn n)
-
 module div2-≤₁ where 
 
   div2-≤ : ∀ n → div2 n ≤ n
   div2-≤ zero = z≤n
   div2-≤ (suc zero) = z≤n
   div2-≤ (suc (suc n)) = s≤s d2n≤sn
-    where open ≤-Reasoning
-          d2n≤sn : div2 n ≤ suc n
-          d2n≤sn = begin 
-                     div2 n ≤⟨ div2-≤ n ⟩
-                     n      ≤⟨ n≤sn n ⟩
-                     suc n
-                   ∎
+    where
+      open ≤-Reasoning
+      d2n≤sn : div2 n ≤ suc n
+      d2n≤sn = begin 
+                 div2 n ≤⟨ div2-≤ n ⟩
+                 n      ≤⟨ n≤1+n n ⟩
+                 suc n
+               ∎
 
 module div2-≤₂ where 
-
-  s≤′s : ∀ {m n} → m ≤′ n → suc m ≤′ suc n
-  s≤′s ≤′-refl = ≤′-refl
-  s≤′s (≤′-step m≤′n) = ≤′-step (s≤′s m≤′n)
 
   div2-≤ : ∀ n → div2 n ≤′ n
   div2-≤ zero = ≤′-refl
@@ -51,13 +46,13 @@ module div2-≤₃ where
           prop₁ : div2 n ≤ suc n
           prop₁ = begin
                     div2 n ≤⟨ proj₁ (div2-≤₀ n) ⟩
-                    n ≤⟨ n≤sn n ⟩
+                    n ≤⟨ n≤1+n n ⟩
                     suc n
                   ∎
           prop₂ : div2 (suc n) ≤ suc (suc n)
           prop₂ = begin
                     div2 (suc n) ≤⟨ proj₂ (div2-≤₀ n) ⟩
-                    suc n ≤⟨ s≤s (n≤sn n) ⟩
+                    suc n ≤⟨ n≤1+n (suc n) ⟩
                     suc (suc n)
                   ∎
 
@@ -89,7 +84,7 @@ module div2-≤₄ where
               (λ n p q → s≤s (
                 begin
                   div2 n ≤⟨ p ⟩
-                  n ≤⟨ n≤sn n ⟩
+                  n ≤⟨ n≤1+n n ⟩
                   suc n
                 ∎))
               n
@@ -113,7 +108,7 @@ module div2-≤₅ where
                   d2n≤sn : div2 n ≤ suc n
                   d2n≤sn = begin 
                              div2 n ≤⟨ p ⟩
-                             n      ≤⟨ n≤sn n ⟩
+                             n      ≤⟨ n≤1+n n ⟩
                              suc n
                            ∎
 
