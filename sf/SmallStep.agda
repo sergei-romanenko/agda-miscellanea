@@ -1,3 +1,7 @@
+--
+-- Small-step Operational Semantics
+--
+
 module SmallStep where
 
 open import Data.Nat
@@ -19,17 +23,23 @@ open import Relation.Binary
   using (Rel)
 open import Relation.Binary.PropositionalEquality
 
+--
+-- A Toy Language
+--
+
 data Tm : Set where
   tm-const : (n : ℕ) → Tm
   tm-plus  : (t₁ t₂ : Tm) → Tm
 
-module SimpleArith0 where
+module BigStepEvalFn where
+
+  -- Big-step evaluator
 
   eval : (t : Tm) → ℕ
   eval (tm-const n) = n
   eval (tm-plus t₁ t₂) = eval t₁ + eval t₂
 
-module SimpleArith1 where
+module BigStepEvalRel where
 
   -- Big-step evaluation relation
 
@@ -43,7 +53,55 @@ module SimpleArith1 where
       t₂ ⇓ n₂ →
       tm-plus t₁ t₂ ⇓ n₁ + n₂
 
-module SimpleArith1′ where
+module BigStep-FnRel-Equiv where
+  open BigStepEvalFn
+  open BigStepEvalRel
+
+  -- Equivalence of the two big-step semantics
+
+  fn⇒rel : ∀ {t n} → eval t ≡ n  → t ⇓ n
+  fn⇒rel {tm-const n} refl = e-const
+  fn⇒rel {tm-plus t₁ t₂} refl =
+    e-plus (fn⇒rel refl) (fn⇒rel refl)
+
+  rel⇒eval : ∀ {t n} → t ⇓ n → eval t ≡ n
+  rel⇒eval e-const = refl
+  rel⇒eval (e-plus h₁ h₂)
+    rewrite rel⇒eval h₁ | rel⇒eval h₂
+    = refl
+
+  fn⇔rel : ∀ {t n} → (eval t ≡ n) ⇔ (t ⇓ n)
+  fn⇔rel {t} = equivalence fn⇒rel rel⇒eval
+
+  -- fn⇒rel without `refl`
+
+  fn⇒rel′ : ∀ t → t ⇓ (eval t)
+  fn⇒rel′ (tm-const n) = e-const
+  fn⇒rel′ (tm-plus t₁ t₂) = e-plus (fn⇒rel′ t₁) (fn⇒rel′ t₂)
+
+  fn⇒rel′′ : ∀ {t n} → (eval t ≡ n) → (t ⇓ n)
+  fn⇒rel′′ {t} {n} = λ et≡n → subst (λ m → t ⇓ m) et≡n (fn⇒rel′ t)
+
+  -- rel⇒eval without `rewrite`
+
+  rel⇒eval′ : ∀ {t n} → t ⇓ n  → eval t ≡ n
+  rel⇒eval′ e-const = refl
+  rel⇒eval′ (e-plus {t₁} {t₂} {n₁} {n₂} h₁ h₂)
+    with rel⇒eval′ h₁ | rel⇒eval′ h₂
+  ... | et₁≡n₁ | et₂≡n₂ =
+    subst₂ (λ x y → x + y ≡ n₁ + n₂) (sym et₁≡n₁) (sym et₂≡n₂)
+           refl
+
+  -- rel⇒eval without `subst₂`
+
+  rel⇒eval′′ : ∀ {t n} → t ⇓ n  → eval t ≡ n
+  rel⇒eval′′ e-const = refl
+  rel⇒eval′′ (e-plus {t₁} {t₂} {n₁} {n₂} h₁ h₂)
+    with eval t₁ | rel⇒eval′′ h₁ | eval t₂ | rel⇒eval′′ h₂
+  ...  | .n₁     | refl          | .n₂     | refl
+    = refl
+
+module BigStepEvalRel′ where
 
   -- Big-step evaluation relation
 
@@ -111,6 +169,9 @@ module SimpleArith2 where
   ⇒-det (n+r t₂⇒) (r+t ())
   ⇒-det (n+r t₂⇒) (n+r t₂⇒') rewrite ⇒-det t₂⇒ t₂⇒' = refl
 
+--
+-- Values
+--
 
 data value : Tm → Set where
   v-c : ∀ {n} → value (tm-const n)
@@ -149,6 +210,8 @@ _+V+_ : ∀ {t₁ t₂} → (v₁ : value t₁) → (v₂ : value t₂) →
          ∃ λ t′ → tm-plus t₁ t₂ ⇒ t′
 v-c {n₁} +V+ v-c {n₂} = tm-const (n₁ + n₂) , n+n
 
+-- Determinism
+
 ⇒-det : ∀ {t t′ t′′} → t ⇒ t′ → t ⇒ t′′ → t′ ≡ t′′
 ⇒-det n+n n+n = refl
 ⇒-det n+n (r+t ())
@@ -159,6 +222,10 @@ v-c {n₁} +V+ v-c {n₂} = tm-const (n₁ + n₂) , n+n
 ⇒-det (n+r v-c ()) n+n
 ⇒-det (n+r v-c t₂⇒) (r+t ())
 ⇒-det (n+r _ t₂⇒) (n+r _ t₂⇒') rewrite ⇒-det t₂⇒ t₂⇒' = refl
+
+--
+-- Strong Progress and Normal Forms
+--
 
 strong-progress : ∀ t → value t ⊎ (∃ λ t' → t ⇒ t')
 strong-progress (tm-const n) = inj₁ v-c
@@ -185,6 +252,10 @@ nf-is-value t ¬t⇒t′ with strong-progress t
 
 nf-same-as-value : ∀ t → normal-form _⇒_ t ⇔ value t
 nf-same-as-value t = equivalence (nf-is-value t) (value-is-nf t)
+
+--
+-- Multi-Step Reduction
+--
 
 _⇒*_ : (t t′ : Tm) → Set
 _⇒*_ = Star _⇒_
@@ -223,8 +294,9 @@ test-⇒*-4 :
 
 test-⇒*-4 = n+r v-c (n+r v-c n+n) ◅ n+r v-c n+n ◅ ε
 
-
---Definition step_normal_form := normal_form step.
+--
+-- Normal Forms Again
+--
 
 _has-normal-form_ : (t t' : Tm) → Set
 t has-normal-form t′ = t ⇒* t′ × normal-form _⇒*_ t′
@@ -293,5 +365,13 @@ normalizing {X} R =
     t⇒*u : tm-plus t₁ t₂ ⇒* tm-const (n₁ + n₂)
     t⇒*u = t⇒*u₁u₂ ◅◅ (u₁u₂⇒u ◅ ε)
 
+--
+-- Equivalence of Big-Step and Small-Step Reduction
+--
+
+{-
+⇓-value : ∀ {t₁ t₂} → t₁ ⇓ t₂ → value t₂
+⇓-value p = ?
+-}
 
 --
