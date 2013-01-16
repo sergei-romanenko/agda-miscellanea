@@ -1,3 +1,13 @@
+{-
+  Based on "Appendix" in
+
+  Yves Bertot and Pierre Castéran.
+  Interactive Theorem Proving and Program Development.
+  Coq’Art: The Calculus of Inductive Constructions.  
+  Texts in Theoretical Computer Science. An EATCS series. Springer Verlag, 2004.
+
+  http://www.cse.chalmers.se/research/group/logic/TypesSS05/resources/coq/CoqArt/
+-}
 module InsertionSort where
 
 open import Data.Nat
@@ -14,26 +24,27 @@ open import Relation.Binary.PropositionalEquality
 open import Data.Nat.Properties
 
 infix 4 _≤∷_
+infix 10000 [≤]_
 
 data _≤∷_ (m : ℕ) : (xs : List ℕ) → Set where
   [] : m ≤∷ []
-  [∷] : ∀ {x xs} → m ≤ x → m ≤∷ (x ∷ xs)
+  [≤]_ : ∀ {x xs} → m ≤ x → m ≤∷ (x ∷ xs)
 
 data Sorted : List ℕ → Set where
   [] : Sorted []
-  ⟨_≤∷_⟩ : ∀ {x xs} → (x≤∷s : x ≤∷ xs) →
+  ⟨_∷_⟩ : ∀ {x xs} → (x≤∷s : x ≤∷ xs) →
             (s : Sorted xs) →
             Sorted (x ∷ xs)
 
 sort-2357 : Sorted (2 ∷ 3 ∷ 5 ∷ 7 ∷ [])
 sort-2357 =
-  ⟨ ([∷] (s≤s (s≤s z≤n))) ≤∷
-  ⟨ ([∷] (s≤s (s≤s (s≤s z≤n)))) ≤∷
-  ⟨ ([∷] (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))) ≤∷
-  ⟨ [] ≤∷ [] ⟩ ⟩ ⟩ ⟩
+  ⟨ [≤] s≤s (s≤s z≤n) ∷
+  ⟨ [≤] s≤s (s≤s (s≤s z≤n)) ∷
+  ⟨ [≤] s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))) ∷
+  ⟨ [] ∷ [] ⟩ ⟩ ⟩ ⟩
 
 sorted-inv : ∀ {x xs} → Sorted (x ∷ xs) → Sorted xs
-sorted-inv ⟨ x≤∷s ≤∷ s ⟩ = s
+sorted-inv ⟨ x≤∷s ∷ s ⟩ = s
 
 -- The number of occurrences of x in xs
 
@@ -161,12 +172,11 @@ insert-≋ m [] = λ n → refl
 insert-≋ m (x ∷ xs) with m ≤? x
 ... | yes m≤?x = λ n → refl
 ... | no  m≰?x =
-  ≋-trans {m ∷ x ∷ xs}{x ∷ m ∷ xs}{x ∷ insert m xs} prop₁ prop₂
-  where
-    prop₁ : m ∷ x ∷ xs ≋ x ∷ m ∷ xs 
-    prop₁ = ≋-perm m x (λ n → refl)
-    prop₂ : x ∷ m ∷ xs ≋ x ∷ insert m xs
-    prop₂ = ≋-∷ x (insert-≋ m xs)
+  ≋-trans {m ∷ x ∷ xs}{x ∷ m ∷ xs}{x ∷ insert m xs}
+          (≋-perm m x (λ n → refl)
+            ∶ m ∷ x ∷ xs ≋ x ∷ m ∷ xs)
+          (≋-∷ x (insert-≋ m xs)
+            ∶ x ∷ m ∷ xs ≋ x ∷ insert m xs)
 
 --
 -- Auxiliaries
@@ -182,39 +192,102 @@ insert-< {m} {x} {xs} x<m with m ≤? x
 ... | no  _   = refl
 
 insert-≤∷ : ∀ {m x xs} → x ≤ m → x ≤∷ xs → x ≤∷ insert m xs
-insert-≤∷ x≤m [] = [∷] x≤m
-insert-≤∷ {m} {x} {n ∷ xs} x≤m ([∷] x≤n) with m ≤? n
-... | yes m≤n = [∷] x≤m
-... | no  m≰n = [∷] x≤n
+insert-≤∷ x≤m [] = [≤] x≤m
+insert-≤∷ {m} {x} {n ∷ xs} x≤m ([≤] x≤n) with m ≤? n
+... | yes m≤n = [≤] x≤m
+... | no  m≰n = [≤] x≤n
 
 insert-sorted : ∀ m xs → Sorted xs → Sorted (insert m xs)
-insert-sorted m .[] [] = ⟨ [] ≤∷ [] ⟩
-insert-sorted m .(x ∷ xs) (⟨_≤∷_⟩ {x} {xs} x≤∷s s) with m ≤? x
-... | yes m≤x = ⟨ [∷] m≤x ≤∷ ⟨ x≤∷s ≤∷ s ⟩ ⟩
+insert-sorted m .[] [] = ⟨ [] ∷ [] ⟩
+insert-sorted m .(x ∷ xs) (⟨_∷_⟩ {x} {xs} x≤∷s s) with m ≤? x
+... | yes m≤x = ⟨ [≤] m≤x ∷ ⟨ x≤∷s ∷ s ⟩ ⟩
 ... | no  m≰x =
   ⟨  (insert-≤∷ (≰⇒≤ m≰x) x≤∷s  ∶ x ≤∷ insert m xs)
-  ≤∷ (insert-sorted m xs s       ∶ Sorted (insert m xs)) ⟩
+  ∷ (insert-sorted m xs s       ∶ Sorted (insert m xs)) ⟩
 
--- sort
 
-sort : ∀ xs → ∃ λ ys → xs ≋ ys × Sorted ys
-sort [] = [] , (λ (x : ℕ) → refl) , []
-sort (m ∷ xs) with sort xs
-... | ys , xs≋ys , sorted-ys =
-  insert m ys ,
-  (≋-trans {xs = m ∷ xs} {ys = m ∷ ys} {zs = insert m ys}
-           (≋-∷ m xs≋ys) (insert-≋ m ys)
-    ∶ m ∷ xs ≋ insert m ys) ,
-  (insert-sorted m ys sorted-ys
-    ∶ Sorted (insert m ys))
+--
+-- "Internalism": the algorithm and the proof of correctness
+-- are intertwined.
+--
+{-
+  See
+    Hsiang−Shang Ko.
+    Datatype ornamentation and the Dutch National Flag problem.
+    Transfer dissertation. October, 2011.
+    http://www.cs.ox.ac.uk/publications/publication5233-abstract.html
+-}
 
--- insertion-sort
+module Sort-internalism where
 
-insertion-sort : (xs : List ℕ) → List ℕ
-insertion-sort xs = proj₁ (sort xs)
+  -- sort
 
-insertion-sort-3251 :
-  insertion-sort (3 ∷ 2 ∷ 4 ∷ 1 ∷ []) ≡ 1 ∷ 2 ∷ 3 ∷ 4 ∷ []
-insertion-sort-3251 = refl
+  sort : ∀ xs → ∃ λ ys → xs ≋ ys × Sorted ys
+  sort [] = [] , (λ (n : ℕ) → refl) , []
+  sort (m ∷ xs) with sort xs
+  ... | ys , xs≋ys , sorted-ys =
+    insert m ys ,
+    (≋-trans {xs = m ∷ xs} {ys = m ∷ ys} {zs = insert m ys}
+             (≋-∷ m xs≋ys) (insert-≋ m ys)
+      ∶ m ∷ xs ≋ insert m ys) ,
+    (insert-sorted m ys sorted-ys
+      ∶ Sorted (insert m ys))
+
+  -- insertion-sort
+
+  insertion-sort : (xs : List ℕ) → List ℕ
+  insertion-sort xs = proj₁ (sort xs)
+
+  insertion-sort-3251 :
+    insertion-sort (3 ∷ 2 ∷ 4 ∷ 1 ∷ []) ≡ 1 ∷ 2 ∷ 3 ∷ 4 ∷ []
+  insertion-sort-3251 = refl
+
+
+--
+-- "Externalism": the algorithm and the proof of correctness
+-- are separated.
+--
+
+module Sort-externalism where
+
+  insertion-sort : (xs : List ℕ) → List ℕ
+  insertion-sort [] = []
+  insertion-sort (m ∷ xs) with insertion-sort xs
+  ... | ys = insert m ys
+
+  insertion-sort-3251 :
+    insertion-sort (3 ∷ 2 ∷ 4 ∷ 1 ∷ []) ≡ 1 ∷ 2 ∷ 3 ∷ 4 ∷ []
+  insertion-sort-3251 = refl
+
+  respects-≋ : ∀ xs → xs ≋ insertion-sort xs
+  respects-≋ [] = λ n → refl
+  respects-≋ (m ∷ xs) with insertion-sort xs | respects-≋ xs
+  ... | ys | xs≋ys = 
+    (≋-trans {xs = m ∷ xs} {ys = m ∷ ys} {zs = insert m ys}
+             (≋-∷ m xs≋ys) (insert-≋ m ys)
+    ∶ m ∷ xs ≋ insert m ys)
+
+  ensures-Sorted : ∀ xs → Sorted (insertion-sort xs)
+  ensures-Sorted [] = []
+  ensures-Sorted (m ∷ xs)
+    with insertion-sort xs | ensures-Sorted xs
+  ... | ys | sorted-ys =
+    (insert-sorted m ys sorted-ys
+      ∶ Sorted (insert m ys))
+
+  insertion-sort-correct : ∀ xs {ys} → insertion-sort xs ≡ ys →
+    xs ≋ ys × Sorted ys
+  insertion-sort-correct xs refl =
+    (respects-≋ xs) , (ensures-Sorted xs)
+
+module IntExt-Equivalent where
+
+  open Sort-internalism
+  open Sort-externalism
+
+  equiv : ∀ xs →
+    Sort-internalism.insertion-sort xs ≡ Sort-externalism.insertion-sort xs
+  equiv [] = refl
+  equiv (m ∷ xs) = cong (insert m) (equiv xs)
 
 --
