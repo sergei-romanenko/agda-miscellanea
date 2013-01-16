@@ -9,6 +9,8 @@ open import Data.Empty
 
 open import Data.Star
 
+open import Function
+
 open import Function.Equivalence
   using (_⇔_; equivalence)
 
@@ -266,19 +268,30 @@ normalizing {X} R =
 ⇒*-congr-2 v-c (t₂⇒ ◅ ⇒*u) = (n+r v-c t₂⇒) ◅ (⇒*-congr-2 v-c ⇒*u)
 
 ⇒-normalizing : normalizing _⇒_
+-- ∀ t → ∃ λ u → (t ⇒* u) × ∄ (λ u′ → u ⇒ u′)
 ⇒-normalizing (tm-const n) =
   (tm-const n) , ε , value-is-nf (tm-const n) v-c
 ⇒-normalizing (tm-plus t₁ t₂) with ⇒-normalizing t₁ | ⇒-normalizing t₂
-... | u₁ , t₁⇒*u₁ , ¬u₁⇒ | u₂ , t₂⇒*u₂ , ¬u₂⇒ =
-  tm-const ((proj₁ nu₁) + (proj₁ nu₂)) , {!!} , {!!}
+... | u₁ , t₁⇒*u₁ , ¬u₁⇒ | u₂ , t₂⇒*u₂ , ¬u₂⇒
+  with n-of-value (nf-is-value u₁ ¬u₁⇒) | n-of-value (nf-is-value u₂ ¬u₂⇒)
+... | n₁ , t-n₁≡u₁ | n₂ , t-n₂≡u₂ =
+  u , t⇒*u , value-is-nf u v-c
   where
-    prop₁ : value u₁
-    prop₁ = nf-is-value u₁ ¬u₁⇒
-    nu₁ : Σ ℕ (λ n₁ → tm-const n₁ ≡ u₁)
-    nu₁ = n-of-value prop₁
-    prop₂ : value u₂
-    prop₂ = nf-is-value u₂ ¬u₂⇒
-    nu₂ : Σ ℕ (λ n₂ → tm-const n₂ ≡ u₂)
-    nu₂ = n-of-value prop₂
+    u = tm-const (n₁ + n₂)
+
+    t⇒*u₁u₂ : tm-plus t₁ t₂ ⇒* tm-plus u₁ u₂
+    t⇒*u₁u₂ =
+      (⇒*-congr-1 t₁⇒*u₁) ◅◅
+        (⇒*-congr-2 (nf-is-value u₁ ¬u₁⇒) t₂⇒*u₂)
+
+    u₁u₂⇒u : tm-plus u₁ u₂ ⇒ tm-const (n₁ + n₂)
+    u₁u₂⇒u = subst₂
+      (λ x y → tm-plus x y ⇒ (tm-const (n₁ + n₂)))
+      t-n₁≡u₁ t-n₂≡u₂
+      n+n
+
+    t⇒*u : tm-plus t₁ t₂ ⇒* tm-const (n₁ + n₂)
+    t⇒*u = t⇒*u₁u₂ ◅◅ (u₁u₂⇒u ◅ ε)
+
 
 --
