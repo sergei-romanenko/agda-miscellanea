@@ -446,14 +446,14 @@ af-sum-lift {X} {Y} A B afA afB =
 -- Finite natural values in the range [0 ... k-1] that is, k inhabitants
 
 data Finite (k : ℕ) : Set where
-  fin-intro : ∀ (x : ℕ) → (x<′k : x <′ k) → Finite k
+  fin-intro : ∀ (x : ℕ) → (x<k : x < k) → Finite k
 
 next-fin : ∀ {k : ℕ} → Finite k → Finite k → Set
-next-fin {k} (fin-intro x x<′k) (fin-intro y y<′k) =
-  (suc x ≡ k) × (y ≡ 0) ⊎ (suc x <′ k) × (y ≡ suc x)
+next-fin {k} (fin-intro x x<k) (fin-intro y y<k) =
+  (suc x ≡ k) × (y ≡ 0) ⊎ (suc x < k) × (y ≡ suc x)
 
 eq-fin : ∀ {k : ℕ} → Finite k → Finite k → Set
-eq-fin (fin-intro x x<′k) (fin-intro y y<′k) =
+eq-fin (fin-intro x x<k) (fin-intro y y<k) =
   x ≡ y
 
 lift-diag : ∀ {ℓ} {k : ℕ} {X : Set ℓ} →
@@ -506,8 +506,8 @@ af-finite k =
   af-⇒
     ((af-intersection (af-cofmap f1 ≤′-af) (af-cofmap f2 ≤′-af))
       ∶ Almost-full (λ x y → (f1 x ≤′ f1 y) × (f2 x ≤′ f2 y)))
-    ((λ {(fin-intro x x<′k) (fin-intro y y<′k) (h1 , h2) →
-                    kxy≡ k x x<′k y y<′k h1 h2 })
+    ((λ {(fin-intro x x<k) (fin-intro y y<k) (h1 , h2) →
+                    kxy≡ k x (≤⇒≤′ x<k) y (≤⇒≤′ y<k) h1 h2 })
       ∶ (∀ x y → f1 x ≤′ f1 y × f2 x ≤′ f2 y → eq-fin x y))
   where
     f1 : ∀ {k : ℕ} (fk : Finite k) → ℕ

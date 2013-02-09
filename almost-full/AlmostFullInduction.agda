@@ -24,12 +24,18 @@ open import Data.Sum
 open import Data.Empty
 open import Data.Star
 open import Data.Plus
---open import Data.Fin
---  renaming (_≤_ to _≤F_; _<_ to _<F_; _+_ to _+F+; compare to compareF)
+import Data.Fin
+  --using (Fin; zero; suc; toℕ; raise)
+  --renaming (zero to zeroF; suc to sucF)
+  --renaming (_≤_ to _≤F_; _<_ to _<F_; _+_ to _+F+; compare to compareF)
 
 
 open import Data.Nat.Properties
   --using (≤⇒≤′; ≤′⇒≤)
+import Algebra
+private
+  module CS =
+    Algebra.CommutativeSemiring Data.Nat.Properties.commutativeSemiring
 
 open import Relation.Nullary
 open import Relation.Unary
@@ -38,12 +44,16 @@ open import Relation.Binary
 open import Relation.Binary.PropositionalEquality
 
 open import Function
+import Function.Related
 
 open import Induction.WellFounded
 
 import Level
 
-open ≡-Reasoning
+--open ≡-Reasoning
+
+open ≤-Reasoning
+  renaming (begin_ to start_; _∎ to _□; _≡⟨_⟩_ to _≡⟨_⟩'_)
 
 open import AlmostFull
 open import AFConstructions
@@ -92,6 +102,8 @@ af-induction {A = A} T R afR disj P g =
 <′-trans : Transitive _<′_
 <′-trans i<′j j<′k = ≤⇒≤′ (<-trans (≤′⇒≤ i<′j) (≤′⇒≤ j<′k))
 
+
+
 <′⁺⇒<′ : (x y : ℕ) → Plus (λ m n → m <′ n) x y → x <′ y
 <′⁺⇒<′ x y [ x<′y ] = x<′y
 <′⁺⇒<′ x y (.x ∼⁺⟨ x<′⁺y ⟩ y<′⁺y) = <′-trans (<′⁺⇒<′ x _ x<′⁺y) (<′⁺⇒<′ _ y y<′⁺y)
@@ -138,34 +150,38 @@ power (suc n) R x y = ∃ (λ z → (R x z) × (power n R z y))
 
 -- Addition modulo k
 
-plus-mod! : (k n x : ℕ) → x <′ k → ℕ
-plus-mod! k zero x x<′k = x
-plus-mod! .(suc x) (suc n) x ≤′-refl =
-  plus-mod! (suc x) n zero (s≤′s z≤′n)
-plus-mod! .(suc k') (suc n) x (≤′-step {k'} x<′k') =
-  plus-mod! (suc k') n (suc x) (s≤′s x<′k')
+plus-mod : (k n x : ℕ) → ℕ
+plus-mod k zero x = x
+plus-mod k (suc n) x with k ≤? suc x
+... | yes k≤sx = plus-mod k n zero
+... | no  k≰sx = plus-mod k n (suc x)
 
 -- Interesting lemmas about addition modulo k
 
--- plus-mod-aux-fin
+-- plus-mod-<
 
-plus-mod-fin! : (k n x : ℕ) →
-  (lt : x <′ k) → plus-mod! k n x lt <′ k
-plus-mod-fin! k zero x x<′k = x<′k
-plus-mod-fin! .(suc x) (suc n) x ≤′-refl =
-  plus-mod-fin! (suc x) n zero (s≤′s z≤′n)
-plus-mod-fin! .(suc k') (suc n) x (≤′-step {k'} x<′k') =
-  plus-mod-fin! (suc k') n (suc x) (s≤′s x<′k')
+plus-mod-< : (k n x : ℕ) →
+  (x<k : x < k) → plus-mod k n x < k
+plus-mod-< k zero x x<k = x<k
+plus-mod-< k (suc n) x x<k with k ≤? suc x
+... | yes k≤sx  = plus-mod-< k n zero 1≤k
+  where 1≤k = start 1 ≤⟨ s≤s z≤n ⟩ suc x ≤⟨ x<k ⟩ k □
+... | no  k≰sx  = plus-mod-< k n (suc x) (≰⇒> k≰sx)
 
--- plus-mod
+-- plus-mod-fin
 
-plus-mod : {k : ℕ} (n : ℕ) (x : Finite k) → Finite k
-plus-mod {k} n (fin-intro x x<′k) =
-  fin-intro (plus-mod! k n x x<′k) (plus-mod-fin! k n x x<′k)
+plus-mod-fin : {k : ℕ} (n : ℕ) (x : Finite k) → Finite k
+plus-mod-fin {k} n (fin-intro x x<k) =
+  fin-intro (plus-mod k n x) (plus-mod-< k n x x<k)
 
--- plus-mod-lt
+-- Auxiliaries
 
--- ≰⇒> : _≰_ ⇒ _>_
+≡-pred : {n m : ℕ} → suc n ≡ suc m → n ≡ m
+≡-pred refl = refl
+
++0 : (m : ℕ) → m + zero ≡ m
++0 zero = refl
++0 (suc n) = cong suc (+0 n)
 
 +s : (m n : ℕ) → m + suc n ≡ suc (m + n)
 +s zero n = refl
@@ -174,28 +190,138 @@ plus-mod {k} n (fin-intro x x<′k) =
 ≤′-pred : {m n : ℕ} → suc m ≤′ suc n → m ≤′ n
 ≤′-pred = ≤⇒≤′ ∘ ≤-pred ∘ ≤′⇒≤
 
-n+x<′k⇒x<′k : (n : ℕ) {x k : ℕ} → n + x <′ k → x <′ k
-n+x<′k⇒x<′k zero n+x<′k = n+x<′k
-n+x<′k⇒x<′k (suc n) n+x<′k =
-  n+x<′k⇒x<′k n (≤′-pred (≤′-step n+x<′k)) 
+≤-antisym : ∀ {m n : ℕ} → m ≤ n → n ≤ m → m ≡ n
+≤-antisym z≤n z≤n = refl
+≤-antisym (s≤s m≤n) (s≤s n≤m) with ≤-antisym m≤n n≤m
+... | refl = refl
 
-plus-mod-lt! : (k n x : ℕ) → (n+x<′k : n + x <′ k) → (x<′k : x <′ k) →
-  plus-mod! k n x x<′k ≡ n + x
-plus-mod-lt! k zero x n+x<′k x<′k = refl
-plus-mod-lt! .(suc x) (suc n) x n+x<′k ≤′-refl
-  = ⊥-elim (helper n x (≤′-pred n+x<′k))
+-- plus-mod-lt
+
+plus-mod-lt : (k n x : ℕ) → (n+x<k : n + x < k) →
+  plus-mod k n x ≡ n + x
+plus-mod-lt k zero x n+x<k = refl
+plus-mod-lt k (suc n) x n+x<k with k ≤? suc x
+... | yes k≤sx = ⊥-elim (<-asym n+x<k k≤snx)
+  where k≤snx = start k ≤⟨ k≤sx ⟩ suc x ≤⟨ s≤s (n≤m+n n x) ⟩ suc (n + x) □
+... | no  k≰sx rewrite sym (+s n x) = plus-mod-lt k n (suc x) n+x<k
+
+-- plus-mod-0
+
+plus-mod-0 : (k n : ℕ) → n < k →
+  plus-mod k n zero ≡ n
+plus-mod-0 k n n<k  =
+  subst (λ e → plus-mod k n 0 ≡ e) (+0 n) (plus-mod-lt k n 0 n+0<k)
+  where 
+    n+0<k : n + 0 < k
+    n+0<k = subst (flip _<_ k) (sym (+0 n)) n<k
+
+-- plus-mod-gt
+
+plus-mod-gt! : (k n x : ℕ) → 0 < k → n < k → x < k →
+  k ≤ n + x → plus-mod k n x + k ≡ (n + x)
+plus-mod-gt! k zero x 0<k n<k x<k k≤n+x =
+  ⊥-elim (<-asym (s≤s k≤n+x) x<k)
+plus-mod-gt! k (suc n) x 0<k n<k x<k k≤n+x with k ≤? suc x
+... | yes k≤sx = helper
   where
-    helper : ∀ n x → suc (n + x) ≤′ x → ⊥
-    helper zero zero ()
-    helper zero (suc x) h = helper zero x (≤′-pred h)
-    helper (suc n) x h = helper n x (≤′-pred (≤′-step h))
-plus-mod-lt! .(suc k') (suc n) x n+x<′k (≤′-step {k'} x<′k′)
-  rewrite sym (+s n x)
-  = plus-mod-lt! (suc k') n (suc x) n+x<′k (s≤′s x<′k′)
+    n′<k : suc n ≤ k
+    n′<k = start suc n ≤⟨ n≤m+n 1 (suc n) ⟩ suc (suc n) ≤⟨ n<k ⟩ k □
+    k≡sx : k ≡ suc x
+    k≡sx = ≤-antisym k≤sx x<k
+    helper : plus-mod k n 0 + k ≡ suc (n + x)
+    helper rewrite plus-mod-0 k n n′<k | sym (+s n x) | k≡sx = refl
+... | no  k≰sx rewrite sym (+s n x) =
+  plus-mod-gt! k n (suc x) 0<k n′<k (≰⇒> k≰sx) k≤n+x
+    where n′<k = start suc n ≤⟨ n≤m+n 1 (suc n) ⟩ suc (suc n) ≤⟨ n<k ⟩ k □
 
-plus-mod-lt : (k n x : ℕ) → (n+x<′k : n + x <′ k) →
-  plus-mod! k n x (n+x<′k⇒x<′k n n+x<′k) ≡ n + x
-plus-mod-lt k n x n+x<′k =
-  plus-mod-lt! k n x n+x<′k (n+x<′k⇒x<′k n n+x<′k)
+plus-mod-gt : (k n x : ℕ) → 0 < k → n < k → (x<k : x < k) →
+  k ≤ n + x → plus-mod k n x ≡ (n + x) ∸ k
+plus-mod-gt k n x 0<k n<k x<k k≤n+x =
+  begin
+    plus-mod k n x
+      ≡⟨ sym (m+n∸n≡m (plus-mod k n x) k) ⟩
+    plus-mod k n x + k ∸ k
+      ≡⟨ cong (flip _∸_ k) (plus-mod-gt! k n x 0<k n<k x<k k≤n+x) ⟩
+    n + x ∸ k
+  ∎
+  where open ≡-Reasoning
 
--- To be continued...
+-- plus-mod-diff
+
+plus-mod-diff : ∀ k n x → 1 < k → 0 < n → n < k → x < k →
+  x ≡ plus-mod k n x → ⊥
+plus-mod-diff k n x 1<k 0<n n<k x<k x≡pm with k ≤? (n + x)
+... | yes k≤n+x = get⊥
+  where
+    1≤k : 1 ≤ k
+    1≤k = start 1 ≤⟨ s≤s z≤n ⟩ 2 ≤⟨ 1<k ⟩ k □
+
+    x+k≡x+n : x + k ≡ x + n
+    x+k≡x+n =
+      begin
+        x + k
+          ≡⟨ cong (flip _+_ k) x≡pm ⟩
+        plus-mod k n x + k
+          ≡⟨ cong (flip _+_ k) (plus-mod-gt k n x 1≤k n<k x<k k≤n+x) ⟩
+        (n + x ∸ k) + k
+          ≡⟨ CS.+-comm (n + x ∸ k) k ⟩
+        k + ((n + x) ∸ k)
+          ≡⟨ m+n∸m≡n {k}{n + x} k≤n+x ⟩
+        n + x
+          ≡⟨ CS.+-comm n x ⟩
+        x + n
+      ∎
+      where open ≡-Reasoning
+
+    x+n<x+k : ∀ x → x + n < x + k
+    x+n<x+k zero = n<k
+    x+n<x+k (suc x) = s≤s (x+n<x+k x)
+
+    get⊥ : ⊥
+    get⊥ = 1+n≰n (subst (λ l → x + n < l) x+k≡x+n (x+n<x+k x))
+
+... | no  k≰n+x = x≢x+n 0<n x≡x+n
+  where
+    x≡x+n : x ≡ x + n
+    x≡x+n =
+      begin
+        x
+          ≡⟨ x≡pm ⟩
+        plus-mod k n x
+          ≡⟨ plus-mod-lt k n x (≰⇒> k≰n+x) ⟩
+        n + x
+          ≡⟨ CS.+-comm n x ⟩
+        x + n
+      ∎
+      where open ≡-Reasoning
+
+    x≢x+n : ∀ {n} → 0 < n → x ≢ x + n
+    x≢x+n {.(suc n)} (s≤s {.0} {n} _) x≡x+n rewrite +s x n = m≢1+m+n x x≡x+n
+
+-- plus-mod-wraparound
+
+plus-mod-wraparound : (n m x : ℕ) → x < m → 0 < n → 
+     plus-mod (n + m) m (n + x) ≡ x
+plus-mod-wraparound n zero x () 0<n
+plus-mod-wraparound n (suc m) x sx≤sm 0<n with (n + suc m) ≤? suc (n + x)
+... | yes sn+m≤sn+x rewrite +s n m =
+  begin
+    plus-mod (suc (n + m)) m zero
+      ≡⟨ plus-mod-0 (suc (n + m)) m (s≤s (n≤m+n n m)) ⟩
+    m
+      ≡⟨ ≤-antisym (cancel-+-left-≤ (suc n) sn+m≤sn+x) (≤-pred sx≤sm) ⟩
+    x
+  ∎
+  where open ≡-Reasoning
+
+... | no sn+m≰sn+x rewrite +s n m =
+  plus-mod-wraparound (suc n) m x x<m (s≤s z≤n)
+  where
+    prop₁ : suc (n + x) ≤ n + m
+    prop₁ = ≤-pred (≰⇒> sn+m≰sn+x)
+    prop₂ : n + suc x ≤ n + m
+    prop₂ = subst (flip _≤_ (n + m)) (sym (+s n x)) prop₁
+    x<m : suc x ≤ m
+    x<m = cancel-+-left-≤ n prop₂
+
+--
