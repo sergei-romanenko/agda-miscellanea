@@ -11,6 +11,8 @@ import Level
 open ≡-Reasoning
 open import Function
 
+-- Filter
+
 filter : ∀ {a} {A : Set a} → (A → Bool) → List A → List A
 filter _ [] = []
 filter p (x ∷ xs) with p x
@@ -19,14 +21,26 @@ filter p (x ∷ xs) with p x
 
 filter-map : ∀ {a b} {A : Set a} {B : Set b}
              (f : A → B) (p : B → Bool) (xs : List A) →
-             filter p (map f xs) ≡ map f (filter (λ x → p (f x)) xs)
+             filter p (map f xs) ≡ map f (filter (p ∘ f) xs)
 filter-map f p [] = refl
 filter-map f p (x ∷ xs) with p (f x)
 ... | true = cong (_∷_ (f x)) (filter-map f p xs)
 ... | false = filter-map f p xs
 
+filter-filter : ∀ {a} {A : Set a}
+                (p : A → Bool) (xs : List A) →
+                filter p (filter p xs) ≡ filter p xs
+filter-filter p [] = refl
+filter-filter p (x ∷ xs) with p x | inspect p x
+... | true  | [ px≡true  ]ⁱ rewrite px≡true =
+  cong (_∷_ x) (filter-filter p xs)
+... | false | [ px≡false ]ⁱ =
+  filter-filter p xs
+
 sat : {A : Set} → (A → Bool) → A → Set
 sat p x = T(p x)
+
+-- Find
 
 data Find {A : Set} (p : A → Bool) : List A → Set where
   found  : (xs : List A) (x : A) → sat p x → (ys : List A) →
