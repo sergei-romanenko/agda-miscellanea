@@ -67,8 +67,12 @@ data bar : List Word → Set where
   bar1 : ∀ {ws} → (g : good ws) → bar ws
   bar2 : ∀ {ws} → (b : ∀ w → bar (w ∷ ws)) → bar ws
 
+-- prop1
+
 prop1 : ∀ (ws : List Word) → bar ([] ∷ ws)
 prop1 ws = bar2 (λ w → bar1 (good0 (L0 ⊴-[])))
+
+-- lemmas
 
 lemma1 : ∀ {x xs ws} → L xs ws → L (x ∷ xs) ws
 lemma1 (L0 e) = L0 (⊴-drop e)
@@ -99,9 +103,10 @@ lemma3 (T2 a≢b t) g = good1 (lemma3 t g)
 
 lemma4 : ∀ {a w ws} → T a (w ∷ ws) (a ≪ (w ∷ ws))
 lemma4 {lA} {w} {[]} = T0 {b = lB} (λ ())
-lemma4 {lA} {w} {x ∷ xs} = T1 lemma4
 lemma4 {lB} {w} {[]} = T0 {b = lA} (λ ())
-lemma4 {lB} {w} {x ∷ xs} = T1 lemma4
+lemma4 {_}  {w} {x ∷ xs} = T1 lemma4
+
+-- auxiliaries
 
 ≢abc : ∀ {a b c : Letter} →
              a ≢ b → c ≢ a → c ≡ b
@@ -118,6 +123,11 @@ lA ≟L lA = yes refl
 lA ≟L lB = no (λ ())
 lB ≟L lA = no (λ ())
 lB ≟L lB = yes refl
+
+≢-sym : ∀ {ℓ} {A : Set ℓ} {x y : A} → x ≢ y → y ≢ x
+≢-sym x≢y y≡x = x≢y (sym y≡x)
+
+-- prop2
 
 mutual
 
@@ -138,22 +148,17 @@ mutual
       prop2Iw (c ∷ cs) with c ≟L a
       prop2Iw (c ∷ cs) | yes c≡a rewrite c≡a =
         prop2 a≢b (b2x cs) (bar2 b2y)
-              (T1 Ta     ∶ T a (cs ∷ xs) ((a ∷ cs) ∷ zs))
-              (T2 b≢a Tb ∶ T b ys ((a ∷ cs) ∷ zs))
-        where
-          b≢a : b ≢ a
-          b≢a = λ b≡a → a≢b (sym b≡a)
+              (T1 Ta             ∶ T a (cs ∷ xs) ((a ∷ cs) ∷ zs))
+              (T2 (≢-sym a≢b) Tb ∶ T b ys ((a ∷ cs) ∷ zs))
       prop2Iw (c ∷ cs) | no c≢a =
-        prop2I a≢b b2x (b2y cs) (T2 a≢c Ta) T1Tb'
+        prop2I a≢b b2x (b2y cs) (T2 (≢-sym c≢a) Ta) T1Tb
         where
-          a≢c : a ≢ c
-          a≢c = λ a≡c → c≢a (sym a≡c)
-          b≡c : b ≡ c
-          b≡c = sym (≢abc a≢b c≢a)
-          T1Tb  : T b (cs ∷ ys) ((b ∷ cs) ∷ zs)
-          T1Tb  = (T1 Tb)
-          T1Tb' : T b (cs ∷ ys) ((c ∷ cs) ∷ zs)
-          T1Tb' = subst (λ z → T b (cs ∷ ys) ((z ∷ cs) ∷ zs)) b≡c (T1 Tb)
+          T1Tb : T b (cs ∷ ys) ((c ∷ cs) ∷ zs)
+          T1Tb = subst (λ z → T b (cs ∷ ys) ((z ∷ cs) ∷ zs))
+                       (sym (≢abc a≢b c≢a) ∶ b ≡ c)
+                       (T1 Tb ∶ T b (cs ∷ ys) ((b ∷ cs) ∷ zs))
+
+-- prop3
 
 prop3 : ∀ {a x xs} → bar (x ∷ xs) →
           bar (a ≪ (x ∷ xs))
@@ -170,10 +175,11 @@ prop3 {a} {x} {xs} (bar2 b) = bar2 prop3w
         (prop3w cs ∶ bar (cs ∷ (a ∷ x) ∷ a ≪ xs))
         (bar2 b ∶ bar (x ∷ xs))
         (T0 c≢a ∶ T c (cs ∷ (a ∷ x) ∷ a ≪ xs) ((c ∷ cs) ∷ (a ∷ x) ∷ a ≪ xs))
-        (T2 a≢c lemma4 ∶ T a (x ∷ xs) ((c ∷ cs) ∷ (a ∷ x) ∷ a ≪ xs))
-      where
-        a≢c : a ≢ c
-        a≢c = λ a≡c → c≢a (sym a≡c)
+        (T2 (≢-sym c≢a) lemma4 ∶ T a (x ∷ xs) ((c ∷ cs) ∷ (a ∷ x) ∷ a ≪ xs))
+
+--
+-- higman
+--
 
 higman' :  ∀ w → bar (w ∷ [])
 higman' [] = prop1 []
@@ -181,6 +187,10 @@ higman' (c ∷ cs) = prop3 (higman' cs)
 
 higman : bar []
 higman = bar2 higman'
+
+--
+-- good-prefix-lemma
+--
 
 data is-prefix {A : Set} (f : ℕ → A) : List A → Set where
   is-prefix-[] : is-prefix f []
@@ -201,5 +211,5 @@ good-prefix-lemma f ws (bar2 b) p =
 
 good-prefix :
   ∀ (f : ℕ → Word) →
-    ‌Σ (List Word) (λ vs → (is-prefix f vs × good vs))
+    ∃ λ ws → (is-prefix f ws × good ws)
 good-prefix f = good-prefix-lemma f [] higman is-prefix-[]
