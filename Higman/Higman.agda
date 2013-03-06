@@ -14,6 +14,10 @@
 module Higman where
 
 open import Data.Nat
+open import Data.Bool
+  renaming (T to T′; _≟_ to _≟B_)
+open import Data.Bool.Properties
+  using (¬-not)
 open import Data.List
 open import Data.Product
 open import Data.Sum
@@ -24,11 +28,11 @@ open import Function
 
 open import Relation.Nullary
 open import Relation.Binary
-open import Relation.Binary.PropositionalEquality renaming([_] to [_]ⁱ)
+open import Relation.Binary.PropositionalEquality
+  renaming([_] to [_]ⁱ)
 
-data Letter : Set where
-  lA : Letter
-  lB : Letter
+Letter : Set
+Letter = Bool
 
 Word = List Letter
 
@@ -102,27 +106,17 @@ lemma3 (T1 t) (good1 g) = good1 (lemma3 t g)
 lemma3 (T2 a≢b t) g = good1 (lemma3 t g)
 
 lemma4 : ∀ {a w ws} → T a (w ∷ ws) (a ≪ (w ∷ ws))
-lemma4 {lA} {w} {[]} = T0 {b = lB} (λ ())
-lemma4 {lB} {w} {[]} = T0 {b = lA} (λ ())
+lemma4 {true} {w} {[]} = T0 {b = false} (λ ())
+lemma4 {false} {w} {[]} = T0 {b = true} (λ ())
 lemma4 {_}  {w} {x ∷ xs} = T1 lemma4
 
 -- auxiliaries
 
-≢abc : ∀ {a b c : Letter} →
-             a ≢ b → c ≢ a → c ≡ b
-≢abc {lA} {lA} {lB} a≢b c≢a = ⊥-elim (a≢b refl)
-≢abc {lB} {lB} {lA} a≢b c≢a = ⊥-elim (a≢b refl)
-≢abc {lA} {lB} {lA} a≢b c≢a = ⊥-elim (c≢a refl)
-≢abc {lB} {lA} {lB} a≢b c≢a = ⊥-elim (c≢a refl)
-≢abc {_}  {lA} {lA} a≢b c≢a = refl
-≢abc {_}  {lB} {lB} a≢b c≢a = refl
-
-_≟L_ : ∀ (a b : Letter) → Dec (a ≡ b)
---a ≟L b = {!!}
-lA ≟L lA = yes refl
-lA ≟L lB = no (λ ())
-lB ≟L lA = no (λ ())
-lB ≟L lB = yes refl
+≢xyz : ∀ {x y z : Letter} →
+          x ≢ z → y ≢ z → x ≡ y
+≢xyz {x} {y} {z} x≢z y≢z = begin
+  x ≡⟨ ¬-not x≢z ⟩ not z ≡⟨ sym (¬-not y≢z) ⟩ y ∎
+  where open ≡-Reasoning
 
 ≢-sym : ∀ {ℓ} {A : Set ℓ} {x y : A} → x ≢ y → y ≢ x
 ≢-sym x≢y y≡x = x≢y (sym y≡x)
@@ -145,7 +139,7 @@ mutual
     where
       prop2Iw : (w : Word) → bar (w ∷ zs)
       prop2Iw [] = prop1 zs
-      prop2Iw (c ∷ cs) with c ≟L a
+      prop2Iw (c ∷ cs) with c ≟B a
       prop2Iw (c ∷ cs) | yes c≡a rewrite c≡a =
         prop2 a≢b (b2x cs) (bar2 b2y)
               (T1 Ta             ∶ T a (cs ∷ xs) ((a ∷ cs) ∷ zs))
@@ -155,7 +149,7 @@ mutual
         where
           T1Tb : T b (cs ∷ ys) ((c ∷ cs) ∷ zs)
           T1Tb = subst (λ z → T b (cs ∷ ys) ((z ∷ cs) ∷ zs))
-                       (sym (≢abc a≢b c≢a) ∶ b ≡ c)
+                       (≢xyz (≢-sym a≢b) c≢a ∶ b ≡ c)
                        (T1 Tb ∶ T b (cs ∷ ys) ((b ∷ cs) ∷ zs))
 
 -- prop3
@@ -167,7 +161,7 @@ prop3 {a} {x} {xs} (bar2 b) = bar2 prop3w
   where
     prop3w : (w : Word) → bar (w ∷ a ≪ (x ∷ xs))
     prop3w [] = prop1 ((a ∷ x) ∷ a ≪ xs)
-    prop3w (c ∷ cs) with c ≟L a
+    prop3w (c ∷ cs) with c ≟B a
     ... | yes c≡a rewrite c≡a = prop3 (b cs)
     ... | no  c≢a =
       prop2
