@@ -26,21 +26,27 @@ open import Data.Star
 open import Data.Plus
 
 open import Data.Nat.Properties
-  using (≤⇒≤′; ≤′⇒≤)
+  using (≤⇒≤′; ≤′⇒≤; ≤-step)
+
+open import Data.Star.Properties
 
 open import Relation.Nullary
 open import Relation.Unary
   hiding (Decidable)
 open import Relation.Binary
-open import Relation.Binary.PropositionalEquality
+open import Relation.Binary.PropositionalEquality as P
 
 open import Function
+import Function.Related as Related
+
+open import Relation.Binary.Sum
+  using (_⊎-cong_)
+open import Relation.Binary.Product.Pointwise
+  using (_×-cong_)
 
 open import Induction.WellFounded
 
 import Level
-
-open ≡-Reasoning
 
 --
 --  Basic setup, and almost-full relations
@@ -53,37 +59,42 @@ data Almost-full {ℓ} {X : Set ℓ} : Rel X ℓ → Set (Level.suc ℓ) where
                Almost-full R
 
 af-⇒ : 
-  ∀ {ℓ} {X : Set ℓ} {A : Rel X ℓ} → Almost-full A → 
-  ∀ {B : Rel X ℓ} → (∀ x y → A x y → B x y) → Almost-full B
-af-⇒ (af-zt r) AB =
-  af-zt (λ x y → AB x y (r x y))
-af-⇒ (af-sup s) AB = af-sup (λ u →
-  af-⇒ (s u) (λ x y → map⊎ (AB x y) (AB u x)))
+  ∀ {ℓ} {X : Set ℓ} {A B : Rel X ℓ} → Almost-full A → 
+  (∀ x y → A x y → B x y) → Almost-full B
+af-⇒ (af-zt r) a→b =
+  af-zt (λ x y → a→b x y (r x y) )
+af-⇒ {_} {X} {A} {B} (af-sup s) a→b = af-sup (λ u →
+  af-⇒ (s u)
+    (λ x y →
+      (A x y ⊎ A u x)
+        ∼⟨ (a→b x y) ⊎-cong (a→b u x) ⟩
+      (B x y ⊎ B u x) ∎))
+  where open Related.EquationalReasoning
 
 -- SecureBy implies that every infinite chain has two related elements
 
 private
-
-  s≤′ : ∀ {m n} → suc m ≤′ n → m ≤′ n
-  s≤′ sm≤′n = ≤⇒≤′ (≤-pred (≤′⇒≤ (≤′-step sm≤′n)))
+  ≤-refl : ∀ {n} → n ≤ n
+  ≤-refl {n} = begin n ∎
+    where open ≤-Reasoning
 
 sec-binary-infinite-chain : 
     ∀ {ℓ} {X : Set ℓ} {R} (f : ℕ → X) → Almost-full R → 
     ∀ (k : ℕ) →
-    ∃ λ m → ∃ λ n → (k ≤′ m) × (m <′ n) × R (f m) (f n)
+    ∃ λ m → ∃ λ n → (k ≤ m) × (m < n) × R (f m) (f n)
 sec-binary-infinite-chain f (af-zt {R'} r) k =
-  k , (suc k) , ≤′-refl , ≤′-refl , (r (f k) (f (suc k)) ∶ R' (f k) (f (suc k)))
+  k , (suc k) , ≤-refl , ≤-refl , (r (f k) (f (suc k)) ∶ R' (f k) (f (suc k)))
 sec-binary-infinite-chain {R} f (af-sup {R'} s) k
   with sec-binary-infinite-chain f (s (f k)) (suc k)
-... | m , n , sk≤′m , m<′n , inj₁ r =
-  m , n , s≤′ sk≤′m , m<′n , (r ∶ R' (f m) (f n))
-... | m , n , k≤′m  , m<′n , inj₂ r =
-  k , m , ≤′-refl  , k≤′m , (r ∶ R' (f k) (f m))
+... | m , n , k<m , m<n , inj₁ r =
+  m , n , ≤-pred (≤-step k<m) , m<n , (r ∶ R' (f m) (f n))
+... | m , n , k<m  , m<n , inj₂ r =
+  k , m , ≤-refl  , k<m , (r ∶ R' (f k) (f m))
 
 af-inf-chain : ∀ {ℓ} {X : Set ℓ} {R} → Almost-full R → ∀ (f : ℕ → X) →
-  ∃ λ m → ∃ λ n → (m <′ n) × R (f m) (f n)
+  ∃ λ m → ∃ λ n → (m < n) × R (f m) (f n)
 af-inf-chain {R = R} afr f with sec-binary-infinite-chain f afr 0
-... | m , n , 0≤′m , m<′n , r = m , n , m<′n , (r ∶ R (f m) (f n))
+... | m , n , 0≤m , m<n , r = m , n , m<n , (r ∶ R (f m) (f n))
 
 --
 -- From a decidable Well-founded relation to an AlmostFull
@@ -93,37 +104,43 @@ af-inf-chain {R = R} afr f with sec-binary-infinite-chain f afr 0
 
 af-iter : ∀ {ℓ} {X : Set ℓ} {R : Rel X ℓ} 
          (decR : Decidable R) (z : X) (accX : Acc R z) →
-         Almost-full (λ x y → ¬ (R x z) ⊎ ¬(R y x))
+         Almost-full (λ x y → ¬ R x z ⊎ ¬ R y x)
 
 af-iter {R = R} d z (acc rs) = af-sup (λ u → help u (d u z))
   where
+    open Related.EquationalReasoning
     help : ∀ u → Dec (R u z) →
-      Almost-full (λ x y → (¬(R x z) ⊎ ¬(R y x)) ⊎ (¬(R u z) ⊎ ¬(R x u)))
-    help u (yes Ruz) =
-      af-⇒ (af-iter d u (rs u Ruz)) (λ _ _ → [ inj₂ ∘ inj₂ , inj₁ ∘ inj₂ ]′)
-    help y (no ¬Ruz) = af-zt (λ _ _ → inj₂ (inj₁ ¬Ruz))
+      Almost-full (λ x y → (¬ R x z ⊎ ¬ R y x) ⊎ (¬ R u z ⊎ ¬ R x u))
+    help u (yes ruz) =
+      af-⇒
+        (af-iter d u (rs u ruz))
+        (λ x y →
+          (¬ R x u ⊎ ¬ R y x)
+            ∼⟨ [ inj₂ ∘ inj₂ , inj₁ ∘ inj₂ ]′ ⟩
+          ((¬ R x z ⊎ ¬ R y x) ⊎ ¬ R u z ⊎ ¬ R x u) ∎)
+    help y (no ¬ruz) = af-zt (λ x y → inj₂ (inj₁ ¬ruz))
 
 af-from-wf : ∀ {ℓ} {X : Set ℓ} {R : Rel X ℓ} →
   Well-founded R → Decidable R → Almost-full (λ x y → ¬ (R y x))
-af-from-wf {X} {R} w d = af-sup (λ u →
-  af-⇒ (af-iter d u (w u)) (λ _ _ → [ inj₂ , inj₁ ]′))
+af-from-wf {R = R} w d = af-sup (λ u →
+  af-⇒
+    (af-iter d u (w u))
+    (λ x y →
+      (¬ R x u ⊎ ¬ R y x)
+        ∼⟨ [ inj₂ , inj₁ ]′ ⟩
+      (¬ R y x ⊎ ¬ R x u) ∎))
+  where open Related.EquationalReasoning
 
 --
 -- From an AlmostFull relation to a Well-Founded one
 --
 
-infixr 5 _◅ʳ_ _◅ʳ⁺_
-
-_◅ʳ_ : ∀ {ℓ} {X : Set ℓ} {T : Rel X ℓ} {x z y} →
-      Star T x y → T y z → Star T x z
-ε ◅ʳ yz = yz ◅ ε
-(x' ◅ xy) ◅ʳ yx = x' ◅ (xy ◅ʳ yx)
+infixr 5 _◅ʳ⁺_
 
 _◅ʳ⁺_ : ∀ {ℓ} {X : Set ℓ} {T : Rel X ℓ} →
-      ∀ {x z y} → Star T x y → T y z → x [ T ]⁺ z
+      ∀ {x y z} → Star T x y → T y z → x [ T ]⁺ z
 ε ◅ʳ⁺ yz = [ yz ]
-(t ◅ xy) ◅ʳ⁺ yz =
-  _ ∼⁺⟨ [ t ] ⟩ (xy ◅ʳ⁺ yz)
+(t ◅ xs) ◅ʳ⁺ yz = _ ∼⁺⟨ [ t ] ⟩ xs ◅ʳ⁺ yz
 
 acc-from-af : 
   ∀ {ℓ} {X : Set ℓ} {R : Rel X ℓ} →
@@ -134,8 +151,10 @@ acc-from-af (af-zt r) T x h =
 acc-from-af {R = R} (af-sup s) T x h = acc (λ z tzx →
   acc-from-af (s x) T z
     (λ u y tyz t+uy →
-      ([ h u y (tyz ◅ʳ tzx) t+uy , h y x ε (tyz ◅ʳ⁺ tzx) ]′
+      ([ h u y (begin y ⟶⋆⟨ tyz ⟩ z ⟶⟨ tzx ⟩ x ∎) t+uy ∶ ¬ R y u ,
+         h y x ε (tyz ◅ʳ⁺ tzx) ∶ ¬ R x y ]′
        ∶ (R y u ⊎ R x y → ⊥))))
+  where open StarReasoning T
 
 wf-from-af : 
    ∀ {ℓ} {X : Set ℓ} {R : Rel X ℓ} (T : Rel X ℓ) →
@@ -203,9 +222,16 @@ af#⇒af (af-sup# g s) = af-sup (λ u → af#⇒af (s u))
 af#-⇒ : 
   ∀ {ℓ} {X : Set ℓ} {A : Rel X ℓ} (t : WFT X) → Almost-full# A t → 
   ∀ {B : Rel X ℓ} → (∀ x y → A x y → B x y) → Almost-full# B t
-af#-⇒ zt (af-zt# r) AB = af-zt# (λ x y → AB x y (r x y))
-af#-⇒ (sup g) (af-sup# .g s) AB =
-  af-sup# g (λ u → af#-⇒ (g u) (s u) (λ x y → map⊎ (AB x y) (AB u x)))
+af#-⇒ zt (af-zt# r) a→b =
+  af-zt# (λ x y → a→b x y (r x y))
+af#-⇒ {_} {X} {A} (sup g) (af-sup# .g s) {B} a→b =
+  af-sup# g (λ u →
+    af#-⇒ (g u) (s u)
+      (λ x y →
+        (A x y ⊎ A u x)
+          ∼⟨ (a→b x y) ⊎-cong (a→b u x) ⟩
+        (B x y ⊎ B u x) ∎))
+  where open Related.EquationalReasoning
 
 --
 -- Secure-by.
@@ -239,6 +265,6 @@ sec-⇒ :
   ∀ {B : Rel X ℓ} → (∀ x y → A x y → B x y) → Secure-by B t
 sec-⇒ zt secA a⇒b = λ x y → a⇒b x y (secA x y)
 sec-⇒ (sup g) secA a⇒b =
-  λ u → sec-⇒ (g u) (secA u) (λ x y → map⊎ (a⇒b x y) (a⇒b u x))
+  λ u → sec-⇒ (g u) (secA u) (λ x y → (a⇒b x y) ⊎-cong (a⇒b u x))
 
 --

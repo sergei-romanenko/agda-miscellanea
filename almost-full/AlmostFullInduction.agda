@@ -25,13 +25,8 @@ open import Data.Empty
 open import Data.Star
 open import Data.Plus
 import Data.Fin
-  --using (Fin; zero; suc; toℕ; raise)
-  --renaming (zero to zeroF; suc to sucF)
-  --renaming (_≤_ to _≤F_; _<_ to _<F_; _+_ to _+F+; compare to compareF)
-
 
 open import Data.Nat.Properties
-  --using (≤⇒≤′; ≤′⇒≤)
 import Algebra
 private
   module CS =
@@ -49,11 +44,6 @@ import Function.Related
 open import Induction.WellFounded
 
 import Level
-
---open ≡-Reasoning
-
-open ≤-Reasoning
-  renaming (begin_ to start_; _∎ to _□; _≡⟨_⟩_ to _≡⟨_⟩'_)
 
 open import AlmostFull
 open import AFConstructions
@@ -202,7 +192,9 @@ plus-mod-lt : (k n x : ℕ) → (n+x<k : n + x < k) →
 plus-mod-lt k zero x n+x<k = refl
 plus-mod-lt k (suc n) x n+x<k with k ≤? suc x
 ... | yes k≤sx = ⊥-elim (<-asym n+x<k k≤snx)
-  where k≤snx = start k ≤⟨ k≤sx ⟩ suc x ≤⟨ s≤s (n≤m+n n x) ⟩ suc (n + x) □
+  where
+    open ≤-Reasoning
+    k≤snx = begin k ≤⟨ k≤sx ⟩ suc x ≤⟨ s≤s (n≤m+n n x) ⟩ suc (n + x) ∎
 ... | no  k≰sx rewrite sym (+s n x) = plus-mod-lt k n (suc x) n+x<k
 
 -- plus-mod-0
@@ -224,15 +216,18 @@ plus-mod-gt! k zero x 0<k n<k x<k k≤n+x =
 plus-mod-gt! k (suc n) x 0<k n<k x<k k≤n+x with k ≤? suc x
 ... | yes k≤sx = helper
   where
+    open ≤-Reasoning
     n′<k : suc n ≤ k
-    n′<k = start suc n ≤⟨ n≤m+n 1 (suc n) ⟩ suc (suc n) ≤⟨ n<k ⟩ k □
+    n′<k = begin suc n ≤⟨ n≤m+n 1 (suc n) ⟩ suc (suc n) ≤⟨ n<k ⟩ k ∎
     k≡sx : k ≡ suc x
     k≡sx = ≤-antisym k≤sx x<k
     helper : plus-mod k n 0 + k ≡ suc (n + x)
     helper rewrite plus-mod-0 k n n′<k | sym (+s n x) | k≡sx = refl
 ... | no  k≰sx rewrite sym (+s n x) =
   plus-mod-gt! k n (suc x) 0<k n′<k (≰⇒> k≰sx) k≤n+x
-    where n′<k = start suc n ≤⟨ n≤m+n 1 (suc n) ⟩ suc (suc n) ≤⟨ n<k ⟩ k □
+    where
+      open ≤-Reasoning
+      n′<k = begin suc n ≤⟨ n≤m+n 1 (suc n) ⟩ suc (suc n) ≤⟨ n<k ⟩ k ∎
 
 plus-mod-gt : (k n x : ℕ) → 0 < k → n < k → (x<k : x < k) →
   k ≤ n + x → plus-mod k n x ≡ (n + x) ∸ k
@@ -254,7 +249,8 @@ plus-mod-diff k n x 1<k 0<n n<k x<k x≡pm with k ≤? (n + x)
 ... | yes k≤n+x = get⊥
   where
     1≤k : 1 ≤ k
-    1≤k = start 1 ≤⟨ s≤s z≤n ⟩ 2 ≤⟨ 1<k ⟩ k □
+    1≤k = begin 1 ≤⟨ s≤s z≤n ⟩ 2 ≤⟨ 1<k ⟩ k ∎
+      where open ≤-Reasoning
 
     x+k≡x+n : x + k ≡ x + n
     x+k≡x+n =
@@ -324,4 +320,21 @@ plus-mod-wraparound n (suc m) x sx≤sm 0<n with (n + suc m) ≤? suc (n + x)
     x<m : suc x ≤ m
     x<m = cancel-+-left-≤ n prop₂
 
---
+
+plus-mod-suc : ∀ m x → x < m → 
+  plus-mod (suc m) m (suc x) ≡ x
+plus-mod-suc zero x ()
+plus-mod-suc (suc m) x x<sm with m ≤? x
+... | yes m≤x =
+  begin
+    plus-mod (suc (suc m)) m zero
+      ≡⟨ plus-mod-0 (suc (suc m)) m (n≤1+n (suc m)) ⟩
+    m
+      ≡⟨ ≤-antisym m≤x (≤-pred x<sm) ⟩
+    x
+  ∎
+  where open ≡-Reasoning
+... | no  m≰x =
+  plus-mod-wraparound 2 m x (≰⇒> m≰x) (s≤s z≤n)
+
+

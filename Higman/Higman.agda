@@ -194,7 +194,7 @@ test-is-prefix = is-prefix-∷ (is-prefix-∷ (is-prefix-∷ is-prefix-[]))
 good-prefix-lemma :
   ∀ (f : ℕ → Word) ws →
     Bar ws → is-prefix f ws →
-    Σ (List Word) (λ vs → is-prefix f vs × good vs)
+    ∃ λ (vs : List Word) → is-prefix f vs × good vs
 good-prefix-lemma f ws (bar1 g) p = ws , p , g
 good-prefix-lemma f ws (bar2 b) p =
   let w = f (length ws) in

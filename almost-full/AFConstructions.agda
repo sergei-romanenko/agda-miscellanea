@@ -29,18 +29,28 @@ open import Data.Unit
 open import Data.Nat
 import Induction.Nat
 open import Data.Nat.Properties
---open import Data.Fin
 
 open import Relation.Nullary
 open import Relation.Binary using (Rel)
 open import Relation.Binary.PropositionalEquality
 
 open import Function
+import Function.Related as Related
+
+open import Algebra
+  using (module CommutativeSemiring)
+open import Function.Related.TypeIsomorphisms
+  using(×⊎-CommutativeSemiring)
+private
+  module ×⊎ {k ℓ} = CommutativeSemiring (×⊎-CommutativeSemiring k ℓ)
+open import Relation.Binary.Sum
+  using (_⊎-cong_)
+open import Relation.Binary.Product.Pointwise
+  using (_×-cong_)
+
 open import Induction.WellFounded
 
 import Level
-
-open ≡-Reasoning
 
 open import AlmostFull
 
@@ -50,7 +60,9 @@ open import AlmostFull
 
 af-union : ∀ {ℓ} {X : Set ℓ} (A B : Rel X ℓ) →
   Almost-full A → Almost-full (λ x y → A x y ⊎ B x y)
-af-union A B afA = af-⇒ afA (λ x y → inj₁)
+af-union A B afA =
+  af-⇒ afA (λ x y → A x y ∼⟨ inj₁ ⟩ (A x y ⊎ B x y) ∎)
+  where open Related.EquationalReasoning
 
 --
 -- Intersections
@@ -61,38 +73,63 @@ af-union A B afA = af-⇒ afA (λ x y → inj₁)
 
 private
 
-  cacb⇒cab : ∀ {ℓ} {X : Set ℓ} (C : Rel X ℓ) {A B : Set ℓ} {x y} →
-                  C x y ⊎ A → C x y ⊎ B → C x y ⊎ A × B
-  cacb⇒cab C (inj₁ c) _        = inj₁ c
-  cacb⇒cab C _        (inj₁ c) = inj₁ c
-  cacb⇒cab C (inj₂ a) (inj₂ b) = inj₂ (a , b)
+  cacb⇒cab : ∀ {ℓ} {C A B : Set ℓ} → (C ⊎ A) × (C ⊎ B) → C ⊎ A × B
+  cacb⇒cab (inj₁ c , cb) = inj₁ c
+  cacb⇒cab (inj₂ a , inj₁ c) = inj₁ c
+  cacb⇒cab (inj₂ a , inj₂ b) = inj₂ (a , b)
 
 oplus-nullary : ∀ {ℓ} {X : Set ℓ} {C : Rel X ℓ} {A B : Set ℓ} {CA : Rel X ℓ} →
   Almost-full CA → (∀ x y → CA x y → C x y ⊎ A) →
   Almost-full (λ x y → C x y ⊎ B) →
   Almost-full (λ x y → C x y ⊎ A × B)
 
-oplus-nullary {C = C} (af-zt ra) ca⇒⊎ afB =
-  af-⇒ afB (λ x y r → cacb⇒cab C (ca⇒⊎ x y (ra x y)) r)
+oplus-nullary {_} {X} {C} {A} {B} {CA} (af-zt ra) ca⇒⊎ afB =
+  af-⇒ afB
+    (λ x y →
+      (C x y ⊎ B)
+        ∼⟨ _,_ (ra x y) ⟩
+      (CA x y × (C x y ⊎ B))
+        ∼⟨ ca⇒⊎ x y ×-cong (_ ∎) ⟩
+      ((C x y ⊎ A) × (C x y ⊎ B))
+        ∼⟨ cacb⇒cab ⟩
+      (C x y ⊎ A × B) ∎)
+  where open Related.EquationalReasoning
+    
 
-oplus-nullary {C = C} afR ca⇒⊎ (af-zt rb) =
-  af-⇒ afR (λ x y r → cacb⇒cab C (ca⇒⊎ x y r) (rb x y))
+oplus-nullary {_} {X} {C} {A} {B} {CA} afR ca⇒⊎ (af-zt rb) =
+  af-⇒ afR
+    (λ x y → 
+      CA x y
+        ∼⟨ ca⇒⊎ x y ⟩
+      (C x y ⊎ A)
+        ∼⟨ flip _,_ (rb x y) ⟩
+      ((C x y ⊎ A) × (C x y ⊎ B))
+        ∼⟨ cacb⇒cab ⟩
+      (C x y ⊎ A × B) ∎)
+  where open Related.EquationalReasoning
 
 oplus-nullary {_} {X} {C} {A} {B} {CA} (af-sup sa) ca⇒⊎ (af-sup sb) =
   af-sup (λ u →
     af-⇒
-      (oplus-nullary
-        (sa u)
-        (λ x y → [ (map⊎ inj₁ id) ∘ (ca⇒⊎ x y) ,
-                    (map⊎ inj₂ id) ∘ (ca⇒⊎ u x) ]′
-         ∶ (CA x y ⊎ CA u x → (C x y ⊎ C u x) ⊎ A))
-        (af-⇒ (sb u) (λ x y → [ [ inj₁ ∘ inj₁ , inj₂ ]′ ,
-                                  [ inj₁ ∘ inj₂ , inj₂ ]′ ]′
-                       ∶ ((C x y ⊎ B) ⊎ C u x ⊎ B → (C x y ⊎ C u x) ⊎ B)))
-        ∶ Almost-full (λ x y → (C x y ⊎ C u x) ⊎ A × B))
-      (λ x y → [ [ inj₁ ∘ inj₁ , inj₂ ∘ inj₁ ]′ , inj₁ ∘ inj₂ ]′
-         ∶ (((C x y ⊎ C u x) ⊎ A × B) → (C x y ⊎ A × B) ⊎ C u x ⊎ A × B))
- ∶ Almost-full (λ x y → (C x y ⊎ A × B) ⊎ C u x ⊎ A × B))
+      (oplus-nullary (sa u)
+        (λ x y →
+          (CA x y ⊎ CA u x)
+            ∼⟨ ca⇒⊎ x y ⊎-cong ca⇒⊎ u x ⟩
+          ((C x y ⊎ A) ⊎ (C u x ⊎ A))
+            ∼⟨ [ inj₁ ⊎-cong id , inj₂ ⊎-cong id ]′ ⟩
+          ((C x y ⊎ C u x) ⊎ A) ∎)
+        (af-⇒
+          (sb u)
+          (λ x y →
+            ((C x y ⊎ B) ⊎ (C u x ⊎ B))
+              ∼⟨ [ inj₁ ⊎-cong id , inj₂ ⊎-cong id ]′ ⟩
+            ((C x y ⊎ C u x) ⊎ B) ∎))
+      ∶ Almost-full (λ x y → (C x y ⊎ C u x) ⊎ A × B))
+      (λ x y →
+        ((C x y ⊎ C u x) ⊎ A × B)
+          ∼⟨ [ [ inj₁ ∘ inj₁ , inj₂ ∘ inj₁ ]′ , inj₁ ∘ inj₂ ]′ ⟩
+        ((C x y ⊎ A × B) ⊎ (C u x ⊎ A × B)) ∎))
+  where open Related.EquationalReasoning
 
 -- oplus-nullary-cor
 
@@ -138,18 +175,34 @@ oplus-unary-sup-sup : ∀ {ℓ} {X : Set ℓ} {C : Rel X ℓ} {A B : X → Set �
 oplus-unary {C = C} (af-zt ra) ca⇒⊎ t afB cb⇒⊎ =
   oplus-unary-zt ra ca⇒⊎ t afB cb⇒⊎
 
-oplus-unary {C = C} (af-sup sa) ca⇒⊎ zt (af-zt# rb) cb⇒⊎ =
+oplus-unary {_} {X} {C} {A} {B} {CA}
+            (af-sup sa) ca⇒⊎ {CB} zt (af-zt# rb) cb⇒⊎ =
   af-sup (λ u → af-⇒ (sa u) (λ x y →
-    [ (λ caxy → inj₁ (cacb⇒cab C (ca⇒⊎ x y caxy) (cb⇒⊎ x y (rb x y)))) ,
-      (λ caux → inj₂ (cacb⇒cab C (ca⇒⊎ u x caux) (cb⇒⊎ u x (rb u x)))) ]′))
+    (CA x y ⊎ CA u x)
+      ∼⟨ flip _,_ (rb x y) ⊎-cong flip _,_ (rb u x) ⟩
+    (CA x y × CB x y ⊎ CA u x × CB u x)
+      ∼⟨ (ca⇒⊎ x y ×-cong cb⇒⊎ x y) ⊎-cong
+          (ca⇒⊎ u x ×-cong cb⇒⊎ u x) ⟩
+    ((C x y ⊎ A x) × (C x y ⊎ B x) ⊎ (C u x ⊎ A u) × (C u x ⊎ B u))
+      ∼⟨ cacb⇒cab ⊎-cong cacb⇒cab ⟩
+    ((C x y ⊎ A x × B x) ⊎ (C u x ⊎ A u × B u)) ∎))
+  where open Related.EquationalReasoning
 
 oplus-unary (af-sup sa) ca⇒⊎ (sup g) (af-sup# .g sb) cb⇒⊎ =
   oplus-unary-sup-sup sa ca⇒⊎ g (af-sup# g sb) cb⇒⊎
 
-oplus-unary-zt {C = C} ra ca⇒⊎ t afB cb⇒⊎ =
+oplus-unary-zt {_} {X} {C} {A} {B} {CA} ra ca⇒⊎ {CB} t afB cb⇒⊎ =
   af#⇒af
     (af#-⇒ t afB
-      (λ x y cb → cacb⇒cab C (ca⇒⊎ x y (ra x y)) (cb⇒⊎ x y cb)))
+      (λ x y →
+        CB x y
+          ∼⟨ _,_ (ra x y) ⟩
+        (CA x y × CB x y)
+          ∼⟨ (ca⇒⊎ x y) ×-cong (cb⇒⊎ x y) ⟩
+        ((C x y ⊎ A x) × (C x y ⊎ B x))
+          ∼⟨ cacb⇒cab  ⟩
+        (C x y ⊎ A x × B x) ∎))
+  where open Related.EquationalReasoning
 
 oplus-unary-?-sup (af-zt r) ca⇒⊎ g (af-sup# .g sb) cb⇒⊎ =
  oplus-unary-zt (λ x y → ca⇒⊎ x y (r x y)) (λ x y z → z)
@@ -163,9 +216,12 @@ oplus-unary-sup-sup {_} {X} {C} {A} {B} {CA} sa ca⇒⊎ {CB}
     af-⇒
       (oplus-nullary-cor (helper-a u) (helper-b u))
       (λ x y →
-        [ [ [ inj₁ ∘ inj₁ , inj₁ ∘ inj₂ ]′ , inj₂ ∘ inj₁ ]′ , inj₂ ∘ inj₂ ]′)
-        ∶ Almost-full (λ x y → (C x y ⊎ A x × B x) ⊎ C u x ⊎ A u × B u))
+        (((C x y ⊎ A x × B x) ⊎ C u x) ⊎ A u × B u)
+          ∼⟨ [ [ [ inj₁ ∘ inj₁ , inj₁ ∘ inj₂ ]′ , inj₂ ∘ inj₁ ]′ ,
+              inj₂ ∘ inj₂ ]′ ⟩
+        ((C x y ⊎ A x × B x) ⊎ C u x ⊎ A u × B u) ∎))
   where
+    open Related.EquationalReasoning
 
     pqarbr : ∀ {ℓ} {P Q R A B : Set ℓ} →
                (P ⊎ Q) ⊎ (A ⊎ R) × (B ⊎ R) → ((P ⊎ A × B) ⊎ Q) ⊎ R
@@ -181,19 +237,28 @@ oplus-unary-sup-sup {_} {X} {C} {A} {B} {CA} sa ca⇒⊎ {CB}
       af-⇒
         (oplus-unary-?-sup
           (sa u)
-          ((λ x y → [ [ inj₁ ∘ inj₁ , inj₂ ∘ inj₁ ]′ ∘ ca⇒⊎ x y ,
-                       map⊎ inj₂ inj₂ ∘ ca⇒⊎ u x ]′)
-          ∶ (∀ x y → CA x y ⊎ CA u x → (C x y ⊎ C u x) ⊎ A x ⊎ A u))
+          ((λ x y →
+            (CA x y ⊎ CA u x)
+              ∼⟨ ca⇒⊎ x y ⊎-cong ca⇒⊎ u x ⟩
+            ((C x y ⊎ A x) ⊎ (C u x ⊎ A u))
+              ∼⟨ [ [ inj₁ ∘ inj₁ , inj₂ ∘ inj₁ ]′ , inj₂ ⊎-cong inj₂ ]′ ⟩
+            ((C x y ⊎ C u x) ⊎ A x ⊎ A u) ∎))
           g
           (af#-⇒
             (sup g)
             (af-sup# g sb)
-            ((λ x y r → map⊎ inj₁ inj₁ (cb⇒⊎ x y r))
-            ∶ (∀ x y → CB x y → (C x y ⊎ C u x) ⊎ B x ⊎ A u)))
+            (λ x y →
+               CB x y
+                 ∼⟨ cb⇒⊎ x y ⟩
+               (C x y ⊎ B x)
+                 ∼⟨ inj₁ ⊎-cong inj₁ ⟩
+               ((C x y ⊎ C u x) ⊎ B x ⊎ A u) ∎))
           (λ x y r → r))
-        ((λ x y → [ [ inj₁ ∘ inj₁ ∘ inj₁ , inj₁ ∘ inj₂ ]′ , pqarbr ∘ inj₂ ]′)
-          ∶ (∀ x y → (C x y ⊎ C u x) ⊎ (A x ⊎ A u) × (B x ⊎ A u) →
-                      ((C x y ⊎ A x × B x) ⊎ C u x) ⊎ A u))
+        (λ x y →
+           ((C x y ⊎ C u x) ⊎ (A x ⊎ A u) × (B x ⊎ A u))
+             ∼⟨ [ [ inj₁ ∘ inj₁ ∘ inj₁ , inj₁ ∘ inj₂ ]′ , pqarbr ∘ inj₂ ]′ ⟩
+           (((C x y ⊎ A x × B x) ⊎ C u x) ⊎ A u) ∎)
+      where open Related.EquationalReasoning
 
     helper-b : ∀ u →
       Almost-full (λ x y → ((C x y ⊎ A x × B x) ⊎ C u x) ⊎ B u)
@@ -201,19 +266,27 @@ oplus-unary-sup-sup {_} {X} {C} {A} {B} {CA} sa ca⇒⊎ {CB}
       af-⇒
         (oplus-unary
           (af-sup sa)
-          ((λ x y → map⊎ inj₁ inj₁ ∘ ca⇒⊎ x y)
-            ∶ (∀ x y → CA x y → (C x y ⊎ C u x) ⊎ A x ⊎ B u))
+          ((λ x y →
+            CA x y
+              ∼⟨ ca⇒⊎ x y ⟩
+            (C x y ⊎ A x)
+              ∼⟨ inj₁ ⊎-cong inj₁ ⟩
+            ((C x y ⊎ C u x) ⊎ A x ⊎ B u) ∎))
           (g u)
           (af#-⇒
             (g u) (sb u)
-            ((λ x y → [ map⊎ inj₁ inj₁ ∘ cb⇒⊎ x y ,
-                         map⊎ inj₂ inj₂ ∘ cb⇒⊎ u x ]′)
-              ∶ (∀ x y → CB x y ⊎ CB u x → (C x y ⊎ C u x) ⊎ B x ⊎ B u)))
+            (λ x y →
+              (CB x y ⊎ CB u x)
+                ∼⟨ (cb⇒⊎ x y) ⊎-cong (cb⇒⊎ u x) ⟩
+              ((C x y ⊎ B x) ⊎ (C u x ⊎ B u))
+                ∼⟨ [ inj₁ ⊎-cong inj₁ , inj₂ ⊎-cong inj₂ ]′ ⟩
+              ((C x y ⊎ C u x) ⊎ B x ⊎ B u) ∎))
           (λ x y r → r))
-        ((λ x y → [ [ inj₁ ∘ inj₁ ∘ inj₁ , inj₁ ∘ inj₂ ]′ , pqarbr ∘ inj₂ ]′)
-          ∶ (∀ x y →
-               (C x y ⊎ C u x) ⊎ (A x ⊎ B u) × (B x ⊎ B u) →
-               ((C x y ⊎ A x × B x) ⊎ C u x) ⊎ B u))
+        (λ x y →
+          ((C x y ⊎ C u x) ⊎ (A x ⊎ B u) × (B x ⊎ B u))
+            ∼⟨ [ [ inj₁ ∘ inj₁ ∘ inj₁ , inj₁ ∘ inj₂ ]′ , pqarbr ∘ inj₂ ]′ ⟩
+          (((C x y ⊎ A x × B x) ⊎ C u x) ⊎ B u) ∎)
+      where open Related.EquationalReasoning
 
 -- oplus-unary-cor
 
@@ -248,28 +321,45 @@ oplus-binary (af-zt ra) (af-zt rb)  =
   af-zt (λ x y → ra x y , rb x y)
 oplus-binary (af-zt ra)  (af-sup sb) =
   oplus-binary-zt-sup ra sb
-oplus-binary (af-sup sa) (af-zt rb) = af-sup (λ u →
-  af-⇒ (sa u) (λ x y → map⊎ (flip _,_ (rb x y)) (flip _,_ (rb u x))))
+oplus-binary {A = A} {B = B} (af-sup sa) (af-zt rb) = af-sup (λ u →
+  af-⇒ (sa u) (λ x y →
+    (A x y ⊎ A u x)
+      ∼⟨ flip _,_ (rb x y) ⊎-cong flip _,_ (rb u x) ⟩
+    (A x y × B x y ⊎ A u x × B u x) ∎))
+  where open Related.EquationalReasoning
 oplus-binary (af-sup sa) (af-sup sb) =
   oplus-binary-sup-sup sa sb
 
 oplus-binary-?-sup (af-zt ra) sb = oplus-binary-zt-sup ra sb
 oplus-binary-?-sup (af-sup sa) sb = oplus-binary-sup-sup sa sb
 
-oplus-binary-zt-sup ra sb = af-sup (λ u →
-  af-⇒ (sb u) (λ x y → map⊎ (_,_ (ra x y)) (_,_ (ra u x))))
+oplus-binary-zt-sup {A = A} {B = B} ra sb = af-sup (λ u →
+  af-⇒ (sb u) (λ x y →
+    (B x y ⊎ B u x)
+      ∼⟨ _,_ (ra x y) ⊎-cong _,_ (ra u x) ⟩
+    ((A x y × B x y) ⊎ (A u x × B u x)) ∎))
+  where open Related.EquationalReasoning
 
 oplus-binary-sup-sup {A = A} {B = B} sa sb = af-sup (λ u → helper u)
   where
+    open Related.EquationalReasoning
     helper : ∀ u → Almost-full (λ x y → A x y × B x y ⊎ A u x × B u x)
     helper u =
       oplus-unary-cor
         (af-⇒ (oplus-binary-?-sup (sa u) sb)
-               (λ x y → λ {(p , q) → map⊎ (flip _,_ q) id p})
-        ∶ Almost-full (λ x y → A x y × B x y ⊎ A u x))
+               (λ x y →
+                 ((A x y ⊎ A u x) × B x y)
+                   ↔⟨ proj₂ ×⊎.distrib (B x y) (A x y) (A u x) ⟩
+                 (A x y × B x y ⊎ A u x × B x y)
+                   ∼⟨ (_ ∎) ⊎-cong proj₁ ⟩
+                 (A x y × B x y ⊎ A u x) ∎))
         (af-⇒ (oplus-binary (af-sup sa) (sb u))
-               (λ x y → λ {(q , p) → map⊎ (_,_ q) id p})
-        ∶ Almost-full (λ x y → A x y × B x y ⊎ B u x))
+               (λ x y →
+                 (A x y × (B x y ⊎ B u x))
+                   ↔⟨ proj₁ ×⊎.distrib (A x y) (B x y) (B u x) ⟩
+                 (A x y × B x y ⊎ A x y × B u x)
+                   ∼⟨ (_ ∎) ⊎-cong proj₂ ⟩
+                 (A x y × B x y ⊎ B u x) ∎))
 
 -- af-intersection
 
