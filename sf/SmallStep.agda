@@ -14,6 +14,7 @@ open import Data.Empty
 open import Data.Star
 
 open import Function
+import Function.Related as Related
 
 open import Function.Equivalence
   using (_⇔_; equivalence)
@@ -59,47 +60,54 @@ module BigStep-FnRel-Equiv where
 
   -- Equivalence of the two big-step semantics
 
-  fn⇒rel : ∀ {t n} → eval t ≡ n  → t ⇓ n
-  fn⇒rel {tm-const n} refl = e-const
-  fn⇒rel {tm-plus t₁ t₂} refl =
-    e-plus (fn⇒rel refl) (fn⇒rel refl)
+  eval⇒rel : ∀ {t n} → eval t ≡ n  → t ⇓ n
+  eval⇒rel {tm-const n} refl = e-const
+  eval⇒rel {tm-plus t₁ t₂} refl =
+    e-plus (eval⇒rel refl) (eval⇒rel refl)
 
-  rel⇒eval : ∀ {t n} → t ⇓ n → eval t ≡ n
+  rel⇒eval : ∀ {t n} → t ⇓ n  → eval t ≡ n
   rel⇒eval e-const = refl
-  rel⇒eval (e-plus h₁ h₂)
-    rewrite rel⇒eval h₁ | rel⇒eval h₂
+  rel⇒eval (e-plus {t₁} {t₂} {n₁} {n₂} h₁ h₂) = begin
+    eval t₁ + eval t₂
+      ≡⟨ cong₂ _+_ (rel⇒eval h₁) (rel⇒eval h₂) ⟩
+    n₁ + n₂
+    ∎
+    where open ≡-Reasoning
+
+  eval⇔rel : ∀ {t n} → (eval t ≡ n) ⇔ (t ⇓ n)
+  eval⇔rel {t} = equivalence eval⇒rel rel⇒eval
+
+  -- eval⇒rel without `refl`
+
+  eval⇒rel₁ : ∀ t → t ⇓ (eval t)
+  eval⇒rel₁ (tm-const n) = e-const
+  eval⇒rel₁ (tm-plus t₁ t₂) = e-plus (eval⇒rel₁ t₁) (eval⇒rel₁ t₂)
+
+  -- rel⇒eval with `rewrite`
+
+  rel⇒eval₁ : ∀ {t n} → t ⇓ n → eval t ≡ n
+  rel⇒eval₁ e-const = refl
+  rel⇒eval₁ (e-plus h₁ h₂)
+    rewrite rel⇒eval₁ h₁ | rel⇒eval₁ h₂
     = refl
-
-  fn⇔rel : ∀ {t n} → (eval t ≡ n) ⇔ (t ⇓ n)
-  fn⇔rel {t} = equivalence fn⇒rel rel⇒eval
-
-  -- fn⇒rel without `refl`
-
-  fn⇒rel′ : ∀ t → t ⇓ (eval t)
-  fn⇒rel′ (tm-const n) = e-const
-  fn⇒rel′ (tm-plus t₁ t₂) = e-plus (fn⇒rel′ t₁) (fn⇒rel′ t₂)
-
-  fn⇒rel′′ : ∀ {t n} → (eval t ≡ n) → (t ⇓ n)
-  fn⇒rel′′ {t} {n} = λ et≡n → subst (λ m → t ⇓ m) et≡n (fn⇒rel′ t)
 
   -- rel⇒eval without `rewrite`
 
-  rel⇒eval′ : ∀ {t n} → t ⇓ n  → eval t ≡ n
-  rel⇒eval′ e-const = refl
-  rel⇒eval′ (e-plus {t₁} {t₂} {n₁} {n₂} h₁ h₂)
-    with rel⇒eval′ h₁ | rel⇒eval′ h₂
-  ... | et₁≡n₁ | et₂≡n₂ =
-    subst₂ (λ x y → x + y ≡ n₁ + n₂) (sym et₁≡n₁) (sym et₂≡n₂)
-           refl
-
-  -- rel⇒eval without `subst₂`
-
-  rel⇒eval′′ : ∀ {t n} → t ⇓ n  → eval t ≡ n
-  rel⇒eval′′ e-const = refl
-  rel⇒eval′′ (e-plus {t₁} {t₂} {n₁} {n₂} h₁ h₂)
-    with eval t₁ | rel⇒eval′′ h₁ | eval t₂ | rel⇒eval′′ h₂
+  rel⇒eval₂ : ∀ {t n} → t ⇓ n  → eval t ≡ n
+  rel⇒eval₂ e-const = refl
+  rel⇒eval₂ (e-plus {t₁} {t₂} {n₁} {n₂} h₁ h₂)
+    with eval t₁ | rel⇒eval₂ h₁ | eval t₂ | rel⇒eval₂ h₂
   ...  | .n₁     | refl          | .n₂     | refl
     = refl
+
+  -- rel⇒eval with `subst₂`
+
+  rel⇒eval₃ : ∀ {t n} → t ⇓ n  → eval t ≡ n
+  rel⇒eval₃ e-const = refl
+  rel⇒eval₃ (e-plus {t₁} {t₂} {n₁} {n₂} h₁ h₂) =
+    subst₂ (λ x y → x + y ≡ n₁ + n₂)
+           (sym $ rel⇒eval₃ h₁) (sym $ rel⇒eval₃ h₂)
+           refl
 
 module BigStepEvalRel-Val where
 
@@ -173,8 +181,8 @@ module SimpleArith2 where
 -- Values
 --
 
-data value : Tm → Set where
-  v-c : ∀ {n} → value (tm-const n)
+data Value : Tm → Set where
+  value : ∀ {n} → Value (tm-const n)
 
 infix 2 _⇒_
 
@@ -185,7 +193,7 @@ data _⇒_ : Tm → Tm → Set where
     (t₁⇒ : t₁ ⇒ t₁') →
     tm-plus t₁ t₂ ⇒ tm-plus t₁' t₂
   n+r : ∀ {t₁ t₂ t₂'} →
-    value t₁ →
+    Value t₁ →
     (t₂⇒ : t₂ ⇒ t₂') →
     tm-plus t₁ t₂ ⇒ tm-plus t₁ t₂'
 
@@ -201,39 +209,39 @@ test-step-2 :
       (tm-plus
         (tm-const 2)
         (tm-const (0 + 3)))
-test-step-2 = n+r v-c (n+r v-c n+n)
+test-step-2 = n+r value (n+r value n+n)
 
-n-of-value : ∀ {t} → (v : value t) → ∃ λ n → tm-const n ≡ t
-n-of-value (v-c {n}) = n , refl
+n-of-value : ∀ {t} → (v : Value t) → ∃ λ n → tm-const n ≡ t
+n-of-value (value {n}) = n , refl
 
-_+V+_ : ∀ {t₁ t₂} → (v₁ : value t₁) → (v₂ : value t₂) →
+_+V+_ : ∀ {t₁ t₂} → (v₁ : Value t₁) → (v₂ : Value t₂) →
          ∃ λ t′ → tm-plus t₁ t₂ ⇒ t′
-v-c {n₁} +V+ v-c {n₂} = tm-const (n₁ + n₂) , n+n
+value {n₁} +V+ value {n₂} = tm-const (n₁ + n₂) , n+n
 
 -- Determinism
 
 ⇒-det : ∀ {t t′ t′′} → t ⇒ t′ → t ⇒ t′′ → t′ ≡ t′′
 ⇒-det n+n n+n = refl
 ⇒-det n+n (r+t ())
-⇒-det n+n (n+r v-c ())
+⇒-det n+n (n+r value ())
 ⇒-det (r+t ()) n+n
 ⇒-det (r+t t₁⇒) (r+t t₁⇒') rewrite ⇒-det t₁⇒ t₁⇒' = refl
-⇒-det (r+t ()) (n+r v-c t₂⇒)
-⇒-det (n+r v-c ()) n+n
-⇒-det (n+r v-c t₂⇒) (r+t ())
+⇒-det (r+t ()) (n+r value t₂⇒)
+⇒-det (n+r value ()) n+n
+⇒-det (n+r value t₂⇒) (r+t ())
 ⇒-det (n+r _ t₂⇒) (n+r _ t₂⇒') rewrite ⇒-det t₂⇒ t₂⇒' = refl
 
 --
 -- Strong Progress and Normal Forms
 --
 
-strong-progress : ∀ t → value t ⊎ (∃ λ t' → t ⇒ t')
-strong-progress (tm-const n) = inj₁ v-c
+strong-progress : ∀ t → Value t ⊎ (∃ λ t' → t ⇒ t')
+strong-progress (tm-const n) = inj₁ value
 strong-progress (tm-plus t₁ t₂) =
   inj₂ (helper (strong-progress t₁) (strong-progress t₂))
   where
-    helper : value t₁ ⊎ (∃ λ t' → t₁ ⇒ t') →
-             value t₂ ⊎ (∃ λ t' → t₂ ⇒ t') →
+    helper : Value t₁ ⊎ (∃ λ t' → t₁ ⇒ t') →
+             Value t₂ ⊎ (∃ λ t' → t₂ ⇒ t') →
              ∃ (λ t′ → tm-plus t₁ t₂ ⇒ t′)
     helper (inj₁ v₁) (inj₁ v₂) = v₁ +V+ v₂
     helper (inj₁ v₁) (inj₂ (t₂′ , t₂⇒t₂′)) = tm-plus t₁ t₂′ , n+r v₁ t₂⇒t₂′
@@ -242,15 +250,15 @@ strong-progress (tm-plus t₁ t₂) =
 normal-form : ∀ {ℓ} {X : Set ℓ} (R : Rel X ℓ) (t : X) → Set ℓ
 normal-form R t = ∄ (λ t' → R t t')
 
-value-is-nf : ∀ t → value t → normal-form _⇒_ t
-value-is-nf .(tm-const n) (v-c {n}) (t′ , ())
+value-is-nf : ∀ t → Value t → normal-form _⇒_ t
+value-is-nf .(tm-const n) (value {n}) (t′ , ())
 
-nf-is-value : ∀ t → normal-form _⇒_ t → value t
+nf-is-value : ∀ t → normal-form _⇒_ t → Value t
 nf-is-value t ¬t⇒t′ with strong-progress t
 ... | inj₁ v = v
 ... | inj₂ (t′ , t⇒t′) = ⊥-elim (¬t⇒t′ (t′ , t⇒t′))
 
-nf-same-as-value : ∀ t → normal-form _⇒_ t ⇔ value t
+nf-same-as-value : ∀ t → normal-form _⇒_ t ⇔ Value t
 nf-same-as-value t = equivalence (nf-is-value t) (value-is-nf t)
 
 --
@@ -267,7 +275,7 @@ test-⇒*-1 :
    ⇒*
       tm-const ((0 + 3) + (2 + 4))
 
-test-⇒*-1 = r+t n+n ◅ n+r v-c n+n ◅ n+n ◅ ε
+test-⇒*-1 = r+t n+n ◅ n+r value n+n ◅ n+n ◅ ε
 
 test-⇒*-2 :
   tm-const 3 ⇒* tm-const 3
@@ -292,7 +300,7 @@ test-⇒*-4 :
         (tm-const 0)
         (tm-const (2 + (0 + 3)))
 
-test-⇒*-4 = n+r v-c (n+r v-c n+n) ◅ n+r v-c n+n ◅ ε
+test-⇒*-4 = n+r value (n+r value n+n) ◅ n+r value n+n ◅ ε
 
 --
 -- Normal Forms Again
@@ -333,21 +341,21 @@ normalizing {X} R =
 ⇒*-congr-1 {t₁} {u} {t₂} (t₁⇒ ◅ ⇒*u) = (r+t t₁⇒) ◅ (⇒*-congr-1 ⇒*u)
 
 ⇒*-congr-2 : ∀ {t₁ t₂ u} →
-               value t₁ →
+               Value t₁ →
                t₂ ⇒* u →
                tm-plus t₁ t₂ ⇒* tm-plus t₁ u
-⇒*-congr-2 v-c ε = ε
-⇒*-congr-2 v-c (t₂⇒ ◅ ⇒*u) = (n+r v-c t₂⇒) ◅ (⇒*-congr-2 v-c ⇒*u)
+⇒*-congr-2 value ε = ε
+⇒*-congr-2 value (t₂⇒ ◅ ⇒*u) = (n+r value t₂⇒) ◅ (⇒*-congr-2 value ⇒*u)
 
 ⇒-normalizing : normalizing _⇒_
 -- ∀ t → ∃ λ u → (t ⇒* u) × ∄ (λ u′ → u ⇒ u′)
 ⇒-normalizing (tm-const n) =
-  (tm-const n) , ε , value-is-nf (tm-const n) v-c
+  (tm-const n) , ε , value-is-nf (tm-const n) value
 ⇒-normalizing (tm-plus t₁ t₂) with ⇒-normalizing t₁ | ⇒-normalizing t₂
 ... | u₁ , t₁⇒*u₁ , ¬u₁⇒ | u₂ , t₂⇒*u₂ , ¬u₂⇒
   with n-of-value (nf-is-value u₁ ¬u₁⇒) | n-of-value (nf-is-value u₂ ¬u₂⇒)
 ... | n₁ , t-n₁≡u₁ | n₂ , t-n₂≡u₂ =
-  u , t⇒*u , value-is-nf u v-c
+  u , t⇒*u , value-is-nf u value
   where
     u = tm-const (n₁ + n₂)
 
@@ -371,9 +379,9 @@ normalizing {X} R =
 
 open BigStepEvalRel-Val
 
-big⇒value : ∀ {t₁ t₂} → t₁ ⇓ t₂ → value t₂
-big⇒value e-const = v-c
-big⇒value (e-plus h₁ h₂) = v-c
+big⇒value : ∀ {t₁ t₂} → t₁ ⇓ t₂ → Value t₂
+big⇒value e-const = value
+big⇒value (e-plus h₁ h₂) = value
 
 big⇒small* : ∀ {t v} → t ⇓ v → t ⇒* v
 big⇒small* e-const = ε
@@ -381,21 +389,21 @@ big⇒small* (e-plus {t₁} {t₂} {n₁} {n₂} h₁ h₂)
   with big⇒small* h₁ | big⇒small* h₂
 ... | t₁⇒*v₁ | t₂⇒*v₂ =
   (⇒*-congr-1 t₁⇒*v₁) ◅◅
-    (⇒*-congr-2 v-c t₂⇒*v₂) ◅◅
+    (⇒*-congr-2 value t₂⇒*v₂) ◅◅
       (n+n ◅ ε)
 
 small⇒big : ∀ {t t' v} → t ⇒ t' → t' ⇓ v → t ⇓ v
 small⇒big n+n e-const = e-plus e-const e-const
 small⇒big (r+t t₁⇒) (e-plus h₁ h₂) =
   e-plus (small⇒big t₁⇒ h₁) h₂
-small⇒big (n+r v-c t₂⇒) (e-plus h₁ h₂) =
+small⇒big (n+r value t₂⇒) (e-plus h₁ h₂) =
   e-plus h₁ (small⇒big t₂⇒ h₂)
 
 
 nf⇒big′ : ∀ {t v} → t ⇒* v → ∄ (λ u → v ⇒  u) → t ⇓ v
 nf⇒big′ {t} {v} t⇒*v h with nf-is-value v h
-nf⇒big′ ε h | v-c = e-const
-nf⇒big′ (t⇒t′ ◅ t′⇒*v) h | v-c {n} =
+nf⇒big′ ε h | value = e-const
+nf⇒big′ (t⇒t′ ◅ t′⇒*v) h | value {n} =
   small⇒big t⇒t′ (nf⇒big′ t′⇒*v h)
 
 nf⇒big : ∀ {t v} → t has-normal-form v → t ⇓ v
