@@ -54,4 +54,4 @@ em→frobenius-dual : em → ∀ {A : Set} {P : A → Set} {Q : Set} →
 em→frobenius-dual em = em→frobenius-dual⇒ em , em→frobenius-dual⇐ em
 
 frobenius-dual→em : frobenius-dual → em
-frobenius-dual→em (f⇒ , f⇐) R = f⇒ (λ r → f⇐ (inj₁ r) (r ∶ R) ∶ R ⊎ ⊥)
+frobenius-dual→em (f⇒ , f⇐) R = f⇒ (λ (r : R) → R ⊎ ⊥ ∋ f⇐ (inj₁ r) r)

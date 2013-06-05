@@ -83,18 +83,18 @@ sec-binary-infinite-chain :
     ∀ (k : ℕ) →
     ∃ λ m → ∃ λ n → (k ≤ m) × (m < n) × R (f m) (f n)
 sec-binary-infinite-chain f (af-zt {R'} r) k =
-  k , (suc k) , ≤-refl , ≤-refl , (r (f k) (f (suc k)) ∶ R' (f k) (f (suc k)))
+  k , (suc k) , ≤-refl , ≤-refl , (R' (f k) (f (suc k)) ∋ r (f k) (f (suc k)))
 sec-binary-infinite-chain {R} f (af-sup {R'} s) k
   with sec-binary-infinite-chain f (s (f k)) (suc k)
 ... | m , n , k<m , m<n , inj₁ r =
-  m , n , ≤-pred (≤-step k<m) , m<n , (r ∶ R' (f m) (f n))
+  m , n , ≤-pred (≤-step k<m) , m<n , (R' (f m) (f n) ∋ r)
 ... | m , n , k<m  , m<n , inj₂ r =
-  k , m , ≤-refl  , k<m , (r ∶ R' (f k) (f m))
+  k , m , ≤-refl  , k<m , (R' (f k) (f m) ∋ r)
 
 af-inf-chain : ∀ {ℓ} {X : Set ℓ} {R} → Almost-full R → ∀ (f : ℕ → X) →
   ∃ λ m → ∃ λ n → (m < n) × R (f m) (f n)
 af-inf-chain {R = R} afr f with sec-binary-infinite-chain f afr 0
-... | m , n , 0≤m , m<n , r = m , n , m<n , (r ∶ R (f m) (f n))
+... | m , n , 0≤m , m<n , r = m , n , m<n , (R (f m) (f n) ∋ r)
 
 --
 -- From a decidable Well-founded relation to an AlmostFull
@@ -147,13 +147,13 @@ acc-from-af :
   Almost-full R → (T : Rel X ℓ)→ ∀ x →
   (∀ z y → Star T y x → z [ T ]⁺ y → R y z → ⊥) → Acc T x
 acc-from-af (af-zt r) T x h =
-  acc (λ z t → ⊥-elim (h z x ε [ t ∶ T z x ] (r x z)))
+  acc (λ z t → ⊥-elim (h z x ε [ T z x ∋ t ] (r x z)))
 acc-from-af {R = R} (af-sup s) T x h = acc (λ z tzx →
   acc-from-af (s x) T z
     (λ u y tyz t+uy →
-      ([ h u y (begin y ⟶⋆⟨ tyz ⟩ z ⟶⟨ tzx ⟩ x ∎) t+uy ∶ ¬ R y u ,
-         h y x ε (tyz ◅ʳ⁺ tzx) ∶ ¬ R x y ]′
-       ∶ (R y u ⊎ R x y → ⊥))))
+      ((R y u ⊎ R x y → ⊥)
+        ∋ [ ¬ R y u ∋ h u y (begin y ⟶⋆⟨ tyz ⟩ z ⟶⟨ tzx ⟩ x ∎) t+uy ,
+             ¬ R x y ∋ h y x ε (tyz ◅ʳ⁺ tzx) ]′)))
   where open StarReasoning T
 
 wf-from-af : 

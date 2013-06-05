@@ -173,10 +173,10 @@ insert-≋ m (x ∷ xs) with m ≤? x
 ... | yes m≤?x = λ n → refl
 ... | no  m≰?x =
   ≋-trans {m ∷ x ∷ xs}{x ∷ m ∷ xs}{x ∷ insert m xs}
-          (≋-perm m x (λ n → refl)
-            ∶ m ∷ x ∷ xs ≋ x ∷ m ∷ xs)
-          (≋-∷ x (insert-≋ m xs)
-            ∶ x ∷ m ∷ xs ≋ x ∷ insert m xs)
+          (m ∷ x ∷ xs ≋ x ∷ m ∷ xs
+            ∋ ≋-perm m x (λ n → refl))
+          (x ∷ m ∷ xs ≋ x ∷ insert m xs
+            ∋ ≋-∷ x (insert-≋ m xs))
 
 --
 -- Auxiliaries
@@ -202,8 +202,8 @@ insert-sorted m .[] [] = ⟨ [] ∷ [] ⟩
 insert-sorted m .(x ∷ xs) (⟨_∷_⟩ {x} {xs} x≤∷s s) with m ≤? x
 ... | yes m≤x = ⟨ [≤] m≤x ∷ ⟨ x≤∷s ∷ s ⟩ ⟩
 ... | no  m≰x =
-  ⟨  (insert-≤∷ (≰⇒≤ m≰x) x≤∷s  ∶ x ≤∷ insert m xs)
-  ∷ (insert-sorted m xs s       ∶ Sorted (insert m xs)) ⟩
+  ⟨  (x ≤∷ insert m xs ∋ insert-≤∷ (≰⇒≤ m≰x) x≤∷s)
+        ∷ (Sorted (insert m xs) ∋ insert-sorted m xs s) ⟩
 
 
 --
@@ -227,11 +227,11 @@ module Sort-internalism where
   sort (m ∷ xs) with sort xs
   ... | ys , xs≋ys , sorted-ys =
     insert m ys ,
-    (≋-trans {xs = m ∷ xs} {ys = m ∷ ys} {zs = insert m ys}
-             (≋-∷ m xs≋ys) (insert-≋ m ys)
-      ∶ m ∷ xs ≋ insert m ys) ,
-    (insert-sorted m ys sorted-ys
-      ∶ Sorted (insert m ys))
+    (m ∷ xs ≋ insert m ys
+      ∋ ≋-trans {xs = m ∷ xs} {ys = m ∷ ys} {zs = insert m ys}
+                (≋-∷ m xs≋ys) (insert-≋ m ys)) ,
+    (Sorted (insert m ys)
+      ∋ insert-sorted m ys sorted-ys)
 
   -- insertion-sort
 
@@ -263,17 +263,19 @@ module Sort-externalism where
   respects-≋ [] = λ n → refl
   respects-≋ (m ∷ xs) with insertion-sort xs | respects-≋ xs
   ... | ys | xs≋ys = 
-    (≋-trans {xs = m ∷ xs} {ys = m ∷ ys} {zs = insert m ys}
-             (≋-∷ m xs≋ys) (insert-≋ m ys)
-    ∶ m ∷ xs ≋ insert m ys)
+    m ∷ xs ≋ insert m ys
+      ∋ ≋-trans {xs = m ∷ xs} {ys = m ∷ ys} {zs = insert m ys}
+                (≋-∷ m xs≋ys) (insert-≋ m ys)
+    
 
   ensures-Sorted : ∀ xs → Sorted (insertion-sort xs)
   ensures-Sorted [] = []
   ensures-Sorted (m ∷ xs)
     with insertion-sort xs | ensures-Sorted xs
   ... | ys | sorted-ys =
-    (insert-sorted m ys sorted-ys
-      ∶ Sorted (insert m ys))
+    Sorted (insert m ys)
+      ∋ insert-sorted m ys sorted-ys
+      
 
   insertion-sort-correct : ∀ xs {ys} → insertion-sort xs ≡ ys →
     xs ≋ ys × Sorted ys

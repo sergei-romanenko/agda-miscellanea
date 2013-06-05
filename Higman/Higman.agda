@@ -142,12 +142,12 @@ mutual
       prop2Iw (c ∷ cs) with c ≟B a
       prop2Iw (c ∷ cs) | yes c≡a rewrite c≡a =
         prop2 a≢b (b2x cs) (bar2 b2y)
-              (t1 ta             ∶ T a (cs ∷ xs) ((a ∷ cs) ∷ zs))
-              (t2 (≢-sym a≢b) tb ∶ T b ys ((a ∷ cs) ∷ zs))
-      prop2Iw (c ∷ cs) | no c≢a rewrite (≢xyz c≢a (≢-sym a≢b) ∶ c ≡ b) =
+              (T a (cs ∷ xs) ((a ∷ cs) ∷ zs)  ∋ t1 ta)
+              (T b ys ((a ∷ cs) ∷ zs)         ∋ t2 (≢-sym a≢b) tb)
+      prop2Iw (c ∷ cs) | no c≢a rewrite (c ≡ b ∋ ≢xyz c≢a (≢-sym a≢b)) =
         prop2I a≢b b2x (b2y cs)
-               (t2 a≢b ta ∶ T a xs ((b ∷ cs) ∷ zs))
-               (t1 tb     ∶ T b (cs ∷ ys) ((b ∷ cs) ∷ zs))
+               (T a xs ((b ∷ cs) ∷ zs)         ∋ t2 a≢b ta)
+               (T b (cs ∷ ys) ((b ∷ cs) ∷ zs)  ∋ t1 tb)
 
 -- prop3
 
@@ -163,10 +163,12 @@ prop3 {a} {x} {xs} (bar2 b) = bar2 prop3w
     ... | no  c≢a =
       prop2
         c≢a
-        (prop3w cs ∶ Bar (cs ∷ (a ∷ x) ∷ a ≪ xs))
-        (bar2 b ∶ Bar (x ∷ xs))
-        (t0 c≢a ∶ T c (cs ∷ (a ∷ x) ∷ a ≪ xs) ((c ∷ cs) ∷ (a ∷ x) ∷ a ≪ xs))
-        (t2 (≢-sym c≢a) lemma4 ∶ T a (x ∷ xs) ((c ∷ cs) ∷ (a ∷ x) ∷ a ≪ xs))
+        (Bar (cs ∷ (a ∷ x) ∷ a ≪ xs) ∋ prop3w cs)
+        (Bar (x ∷ xs)                 ∋ bar2 b)
+        (T c (cs ∷ (a ∷ x) ∷ a ≪ xs) ((c ∷ cs) ∷ (a ∷ x) ∷ a ≪ xs)
+          ∋ t0 c≢a)
+        (T a (x ∷ xs) ((c ∷ cs) ∷ (a ∷ x) ∷ a ≪ xs)
+          ∋ t2 (≢-sym c≢a) lemma4)
 
 --
 -- higman

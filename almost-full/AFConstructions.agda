@@ -111,7 +111,8 @@ oplus-nullary {_} {X} {C} {A} {B} {CA} afR ca⇒⊎ (af-zt rb) =
 oplus-nullary {_} {X} {C} {A} {B} {CA} (af-sup sa) ca⇒⊎ (af-sup sb) =
   af-sup (λ u →
     af-⇒
-      (oplus-nullary (sa u)
+      (Almost-full (λ x y → (C x y ⊎ C u x) ⊎ A × B) ∋
+       oplus-nullary (sa u)
         (λ x y →
           (CA x y ⊎ CA u x)
             ∼⟨ ca⇒⊎ x y ⊎-cong ca⇒⊎ u x ⟩
@@ -123,8 +124,7 @@ oplus-nullary {_} {X} {C} {A} {B} {CA} (af-sup sa) ca⇒⊎ (af-sup sb) =
           (λ x y →
             ((C x y ⊎ B) ⊎ (C u x ⊎ B))
               ∼⟨ [ inj₁ ⊎-cong id , inj₂ ⊎-cong id ]′ ⟩
-            ((C x y ⊎ C u x) ⊎ B) ∎))
-      ∶ Almost-full (λ x y → (C x y ⊎ C u x) ⊎ A × B))
+            ((C x y ⊎ C u x) ⊎ B) ∎)))
       (λ x y →
         ((C x y ⊎ C u x) ⊎ A × B)
           ∼⟨ [ [ inj₁ ∘ inj₁ , inj₂ ∘ inj₁ ]′ , inj₁ ∘ inj₂ ]′ ⟩
@@ -565,10 +565,10 @@ x <′? y with suc x ≤? y
 
 ≤′-af : Almost-full _≤′_
 ≤′-af = af-⇒
-  (af-from-wf Induction.Nat.<-well-founded _<′?_
-    ∶ Almost-full (λ x y → ¬ y <′ x))
-  ((λ x y ¬y<′x → ≤⇒≤′ (≤-pred (≰⇒> (λ y<x → ¬y<′x (≤⇒≤′ y<x)))))
-    ∶ (∀ x y  → ¬ y <′ x → x ≤′ y))
+  (Almost-full (λ x y → ¬ y <′ x)
+    ∋ af-from-wf Induction.Nat.<-well-founded _<′?_)
+  ((∀ x y  → ¬ y <′ x → x ≤′ y)
+    ∋ (λ x y ¬y<′x → ≤⇒≤′ (≤-pred (≰⇒> (λ y<x → ¬y<′x (≤⇒≤′ y<x))))))
 
 private
 
@@ -594,11 +594,11 @@ private
 af-finite : (k : ℕ) → Almost-full (eq-fin {k})
 af-finite k =
   af-⇒
-    ((af-intersection (af-cofmap f1 ≤′-af) (af-cofmap f2 ≤′-af))
-      ∶ Almost-full (λ x y → (f1 x ≤′ f1 y) × (f2 x ≤′ f2 y)))
-    ((λ {(fin-intro x x<k) (fin-intro y y<k) (h1 , h2) →
-                    kxy≡ k x (≤⇒≤′ x<k) y (≤⇒≤′ y<k) h1 h2 })
-      ∶ (∀ x y → f1 x ≤′ f1 y × f2 x ≤′ f2 y → eq-fin x y))
+    (Almost-full (λ x y → (f1 x ≤′ f1 y) × (f2 x ≤′ f2 y))
+      ∋ (af-intersection (af-cofmap f1 ≤′-af) (af-cofmap f2 ≤′-af)))
+    ((∀ x y → f1 x ≤′ f1 y × f2 x ≤′ f2 y → eq-fin x y)
+      ∋ (λ {(fin-intro x x<k) (fin-intro y y<k) (h1 , h2) →
+                       kxy≡ k x (≤⇒≤′ x<k) y (≤⇒≤′ y<k) h1 h2 }))
   where
     f1 : ∀ {k : ℕ} (fk : Finite k) → ℕ
     f1 (fin-intro x x<′k) = x

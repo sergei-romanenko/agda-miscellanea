@@ -60,7 +60,7 @@ module log2-good where
   log2′ zero (acc rs) = zero
   log2′ (suc zero) (acc rs) = zero
   log2′ (suc (suc n)) (acc rs) =
-    suc (log2′ n′ (rs n′ (n′<′ ∶ n′ <′ suc (suc n) )))
+    suc (log2′ n′ (rs n′ (n′ <′ suc (suc n) ∋ n′<′)))
     where
       n′ = suc (div2 n)
       n′<′ = (s≤′s (s≤′s (div2n≤′n n)))
