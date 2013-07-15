@@ -155,7 +155,8 @@ plus-mod-< : (k n x : ℕ) →
 plus-mod-< k zero x x<k = x<k
 plus-mod-< k (suc n) x x<k with k ≤? suc x
 ... | yes k≤sx  = plus-mod-< k n zero 1≤k
-  where 1≤k = start 1 ≤⟨ s≤s z≤n ⟩ suc x ≤⟨ x<k ⟩ k □
+  where open ≤-Reasoning
+        1≤k = begin 1 ≤⟨ s≤s z≤n ⟩ suc x ≤⟨ x<k ⟩ k ∎
 ... | no  k≰sx  = plus-mod-< k n (suc x) (≰⇒> k≰sx)
 
 -- plus-mod-fin

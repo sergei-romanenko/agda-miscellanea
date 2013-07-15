@@ -2,4 +2,4 @@
 
 ##by John P. Pratt
 
-[http://www.johnpratt.com/items/puzzles/logic_puzzles.html](http://www.johnpratt.com/items/puzzles/logic_puzzles.html)
+<http://www.johnpratt.com/items/puzzles/logic_puzzles.html>
