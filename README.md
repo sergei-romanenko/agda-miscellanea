@@ -2,7 +2,7 @@
 
 Another repository with Agda samples can be found at
 
-* [https://www.assembla.com/spaces/agda-samples](https://www.assembla.com/spaces/agda-samples)
+* <https://github.com/sergei-romanenko/agda-samples>
 
 > protocols/
 
