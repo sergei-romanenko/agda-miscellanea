@@ -3,6 +3,7 @@ module MultOdd where
 open import Data.Nat
 open import Data.List
 open import Data.List.All
+open import Data.Product
 open import Data.Sum
 open import Data.Unit
 
@@ -34,6 +35,13 @@ mutual
   data Odd : ℕ → Set where
     odd1 : {n : ℕ} → (prev-even : Even n) → Odd (suc n)
 
+-- Inverse functions (selectors)
+
+even∘suc : {n : ℕ} → Even (suc n) → Odd n
+even∘suc (even1 prev-odd) = prev-odd
+
+odd∘suc : {n : ℕ} → Odd (suc n) → Even n
+odd∘suc (odd1 prev-even) = prev-even
 
 -- odd-1
 
@@ -116,7 +124,7 @@ multOdd [] =
 multOdd (px ∷ pxs) =
   odd*odd px (multOdd pxs)
 
--- even⊎odd (a special case of "excluded middle")
+-- even⊎odd and ¬-even×odd (a special case of "excluded middle")
 
 even⊎odd : ∀ n → Even n ⊎ Odd n
 
@@ -125,6 +133,14 @@ even⊎odd zero = inj₁ even0
 even⊎odd (suc n) with even⊎odd n
 ... | inj₁ even-n = inj₂ (odd1 even-n)
 ... | inj₂ odd-n  = inj₁ (even1 odd-n)
+
+-- ¬-even×odd
+
+¬-even×odd : ∀ n → ¬ (Even n × Odd n)
+
+¬-even×odd zero (_ , ())
+¬-even×odd (suc n) (e-suc-n , o-suc-n) with ¬-even×odd n
+... | ¬h = ¬h (odd∘suc o-suc-n , even∘suc e-suc-n)
 
 -- even*nat
 
@@ -137,12 +153,6 @@ even*nat {m} {n} hm with even⊎odd n
 --
 -- Decidability
 --
-
-even∘suc : {n : ℕ} → Even (suc n) → Odd n
-even∘suc (even1 prev-odd) = prev-odd
-
-odd∘suc : {n : ℕ} → Odd (suc n) → Even n
-odd∘suc (odd1 prev-even) = prev-even
 
 mutual
 
