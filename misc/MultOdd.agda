@@ -11,6 +11,11 @@ open import Function.Related as Related
 
 open import Data.Nat.Properties
 
+open import Data.Empty
+open import Relation.Nullary
+open import Relation.Unary
+  using (Decidable)
+
 open import Relation.Binary.PropositionalEquality as P
   hiding (sym)
 
@@ -28,6 +33,18 @@ mutual
 
   data Odd : ℕ → Set where
     odd1 : {n : ℕ} → (prev-even : Even n) → Odd (suc n)
+
+
+-- odd-1
+
+odd-1 : Odd (suc zero)
+odd-1 = odd1 even0
+
+-- ¬even-1
+
+¬even-1 : ¬ Even (suc zero)
+¬even-1 (even1 ())
+
 
 -- even-2n
 
@@ -116,5 +133,43 @@ even*nat : ∀ {m n} → Even m → Even (m * n)
 even*nat {m} {n} hm with even⊎odd n
 ... | inj₁ even-n = even*even hm even-n
 ... | inj₂ odd-n  = even*odd hm odd-n
+
+--
+-- Decidability
+--
+
+even∘suc : {n : ℕ} → Even (suc n) → Odd n
+even∘suc (even1 prev-odd) = prev-odd
+
+odd∘suc : {n : ℕ} → Odd (suc n) → Even n
+odd∘suc (odd1 prev-even) = prev-even
+
+mutual
+
+  even? : Decidable Even
+
+  even? zero = yes even0
+  even? (suc n) with odd? n
+  ... | yes odd-n = yes (even1 odd-n)
+  ... | no ¬odd-n = no (λ e-suc-n → ¬odd-n (even∘suc e-suc-n))
+
+  odd? : Decidable Odd
+
+  odd? zero = no (λ ())
+  odd? (suc n) with even? n
+  ... | yes even-n = yes (odd1 even-n)
+  ... | no ¬even-n = no (λ o-suc-n → ¬even-n (odd∘suc o-suc-n))
+
+ev?0 : even? zero ≡ yes even0
+ev?0 = refl
+
+odd?0 : odd? zero ≡ no _
+odd?0 = refl
+
+ev?2 : even? (suc (suc zero)) ≡ yes (even1 (odd1 even0))
+ev?2 = refl
+
+ev?1 : even? (suc zero) ≡ no _
+ev?1 = refl
 
 --
