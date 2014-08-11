@@ -16,7 +16,7 @@ module Higman where
 open import Data.Nat
   using (ℕ; zero; suc)
 open import Data.Bool
-  using (Bool; _≟_; not)
+  using (Bool; true; false; _≟_; not)
 open import Data.Bool.Properties
   using (¬-not; not-¬)
 open import Data.List
@@ -69,23 +69,26 @@ data T (a : Letter) : List Word → List Word → Set where
 
 data Bar : List Word → Set where
   now   : ∀ {ws} → (g : good ws) → Bar ws
-  later : ∀ {ws} → (b : ∀ w → Bar (w ∷ ws)) → Bar ws
+  later : ∀ {ws} → (l : ∀ w → Bar (w ∷ ws)) → Bar ws
+
 
 -- auxiliaries
 
-≢xyz : ∀ {x y z : Letter} →
-          x ≢ z → y ≢ z → x ≡ y
-≢xyz {x} {y} {z} x≢z y≢z = begin
-  x ≡⟨ ¬-not x≢z ⟩ not z ≡⟨ sym (¬-not y≢z) ⟩ y ∎
-  where open ≡-Reasoning
-
 ≢-sym : ∀ {ℓ} {A : Set ℓ} {x y : A} → x ≢ y → y ≢ x
 ≢-sym x≢y y≡x = x≢y (sym y≡x)
+
+≢-trans : ∀ {x y z : Letter} →
+            x ≢ y → y ≢ z → x ≡ z
+≢-trans  {x} {y} {z} x≢y y≢z = begin
+  x ≡⟨ ¬-not x≢y ⟩ not y ≡⟨ sym (¬-not (≢-sym y≢z)) ⟩ z ∎
+  where open ≡-Reasoning
+
 
 -- prop1 : Sequences “ending” with empty word (trivial)
 
 prop1 : ∀ (ws : List Word) → Bar ([] ∷ ws)
 prop1 ws = later (λ w → now (good-now (⊵*-now ⊴-[])))
+
 
 -- lemmas
 
@@ -127,52 +130,63 @@ lemma4 a v (w ∷ ws) = t-keep (lemma4 a w ws)
 
 mutual
 
-  prop2 : ∀ {a b} → a ≢ b → ∀ {xs} → Bar xs → ∀ {ys} → Bar ys →
-          ∀ {zs} →
-          T a xs zs → T b ys zs → Bar zs
-  prop2 a≢b (now gx)  ysb ta tb = now (lemma3 ta gx)
-  prop2 a≢b (later b2x) ysb ta tb = prop2I a≢b b2x ysb ta tb
+  prop2 : ∀ {zs a b xs ys} → a ≢ b → Bar xs → Bar ys →
+            T a xs zs → T b ys zs → Bar zs
 
-  prop2I : ∀ {a b} → a ≢ b → ∀ {xs} →  (∀ w → Bar (w ∷ xs)) →
-           ∀ {ys} → Bar ys → ∀ {zs} →
+  prop2 a≢b (now gx) by ta tb = now (lemma3 ta gx)
+  prop2 a≢b (later lx) by ta tb = prop2x a≢b lx by ta tb
+
+  prop2x : ∀ {zs a b xs ys} → a ≢ b → (∀ w → Bar (w ∷ xs)) → Bar ys →
              T a xs zs → T b ys zs → Bar zs
-  prop2I a≢b b2x (now gy) ta tb = now (lemma3 tb gy)
-  prop2I {a} {b} a≢b {xs} b2x {ys} (later b2y) {zs} ta tb = later prop2Iw
-    where
-      prop2Iw : (w : Word) → Bar (w ∷ zs)
-      prop2Iw [] = prop1 zs
-      prop2Iw (c ∷ cs) with c ≟ a
-      prop2Iw (c ∷ cs) | yes c≡a rewrite c≡a =
-        prop2 a≢b (b2x cs) (later b2y)
-              (T a (cs ∷ xs) ((a ∷ cs) ∷ zs)  ∋ t-keep ta)
-              (T b ys ((a ∷ cs) ∷ zs)         ∋ t-drop (≢-sym a≢b) tb)
-      prop2Iw (c ∷ cs) | no c≢a rewrite (c ≡ b ∋ ≢xyz c≢a (≢-sym a≢b)) =
-        prop2I a≢b b2x (b2y cs)
-               (T a xs ((b ∷ cs) ∷ zs)         ∋ t-drop a≢b ta)
-               (T b (cs ∷ ys) ((b ∷ cs) ∷ zs)  ∋ t-keep tb)
+
+  prop2x a≢b lx (now gy) ta tb = now (lemma3 tb gy)
+  prop2x a≢b lx (later ly) ta tb = later (prop2y a≢b lx ly ta tb)
+
+  prop2y : ∀ {zs a b xs ys} → a ≢ b →
+             (∀ w → Bar (w ∷ xs)) → (∀ w → Bar (w ∷ ys)) →
+             T a xs zs → T b ys zs → (∀ w → Bar (w ∷ zs))
+
+  prop2y {zs} a≢b lx ly ta tb [] = prop1 zs
+  prop2y {zs} {a} {b} {xs} {ys} a≢b lx ly ta tb (c ∷ cs) with c ≟ a
+  ... | yes c≡a rewrite c≡a =
+    prop2 a≢b (lx cs) (later ly)
+          (T a (cs ∷ xs) ((a ∷ cs) ∷ zs) ∋ t-keep ta)
+          (T b ys ((a ∷ cs) ∷ zs)        ∋ t-drop (≢-sym a≢b) tb)
+  ... | no  c≢a rewrite (c ≡ b ∋ ≢-trans c≢a a≢b) =
+    prop2x a≢b lx (ly cs)
+           (T a xs ((b ∷ cs) ∷ zs)        ∋ t-drop a≢b ta)
+           (T b (cs ∷ ys) ((b ∷ cs) ∷ zs) ∋ t-keep tb)
+
 
 -- prop3 : Lifting to longer words
 --
 -- Proof idea: Induction on xs ∈ bar, then induction on first word following zs
 
-prop3 : ∀ {a v ws} → Bar (v ∷ ws) →
-          Bar (a ≪ (v ∷ ws))
-prop3 (now g) = now (lemma2 g)
-prop3 {a} {v} {ws} (later b) = later prop3w
-  where
-    prop3w : (w : Word) → Bar (w ∷ a ≪ (v ∷ ws))
-    prop3w [] = prop1 ((a ∷ v) ∷ a ≪ ws)
-    prop3w (c ∷ cs) with c ≟ a
-    ... | yes c≡a rewrite c≡a = prop3 (b cs)
-    ... | no  c≢a =
-      prop2
-        c≢a
-        (Bar (cs ∷ (a ∷ v) ∷ a ≪ ws) ∋ prop3w cs)
-        (Bar (v ∷ ws)                 ∋ later b)
-        (T c (cs ∷ (a ∷ v) ∷ a ≪ ws) ((c ∷ cs) ∷ (a ∷ v) ∷ a ≪ ws)
-          ∋ t-init c≢a)
-        (T a (v ∷ ws) ((c ∷ cs) ∷ (a ∷ v) ∷ a ≪ ws)
-          ∋ t-drop (≢-sym c≢a) (lemma4 a v ws))
+mutual
+
+  prop3 : ∀ {a v ws} → Bar (v ∷ ws) → Bar (a ≪ (v ∷ ws))
+
+  prop3 (now g) = now (lemma2 g)
+  prop3 (later l) = later (prop3l l)
+
+  prop3l : ∀ {a v ws} → (∀ w → Bar (w ∷ v ∷ ws)) → (∀ w → Bar (w ∷ a ≪ (v ∷ ws)))
+
+  prop3l {a} {v} {ws} l [] =
+    prop1 ((a ∷ v) ∷ a ≪ ws)
+  prop3l {a} {v} {ws} l (c ∷ cs) with c ≟ a
+  ... | yes c≡a rewrite c≡a =
+    prop3 (l cs)
+  ... | no  c≢a =
+    prop2 c≢a
+          (Bar (cs ∷ a ≪ (v ∷ ws))
+            ∋ prop3l l cs)
+          (Bar (v ∷ ws)
+            ∋ later l)
+          (T c (cs ∷ a ≪ (v ∷ ws)) ((c ∷ cs) ∷ a ≪ (v ∷ ws))
+            ∋ t-init c≢a)
+          (T a (v ∷ ws) ((c ∷ cs) ∷ a ≪ (v ∷ ws))
+            ∋ t-drop (≢-sym c≢a) (lemma4 a v ws))
+
 
 --
 -- higman: Main theorem
@@ -184,6 +198,7 @@ higman' (c ∷ cs) = prop3 (higman' cs)
 
 higman : Bar []
 higman = later higman'
+
 
 --
 -- good-prefix-lemma
