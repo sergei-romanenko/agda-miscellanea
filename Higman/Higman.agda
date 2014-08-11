@@ -119,9 +119,10 @@ lemma3 (t-keep t) (good-now n) = good-now (lemma3' t n)
 lemma3 (t-keep t) (good-later l) = good-later (lemma3 t l)
 lemma3 (t-drop a≢b t) g = good-later (lemma3 t g)
 
-lemma4 : ∀ a v ws → T a (v ∷ ws) (a ≪ (v ∷ ws))
-lemma4 a v [] = t-init (not-¬ refl)
-lemma4 a v (w ∷ ws) = t-keep (lemma4 a w ws)
+lemma4 : ∀ a ws → ws ≢ [] → T a ws (a ≪ ws)
+lemma4 a [] ws≢[] = ⊥-elim (ws≢[] refl)
+lemma4 a (v ∷ []) ws≢[] = t-init (a ≢ not a ∋ not-¬ refl)
+lemma4 a (v ∷ w ∷ ws) ws≢[] = t-keep (lemma4 a (w ∷ ws) (w ∷ ws ≢ [] ∋ λ ()))
 
 -- prop2 : Interleaving two trees
 --
@@ -130,32 +131,33 @@ lemma4 a v (w ∷ ws) = t-keep (lemma4 a w ws)
 
 mutual
 
-  prop2 : ∀ {zs a b xs ys} → a ≢ b → Bar xs → Bar ys →
-            T a xs zs → T b ys zs → Bar zs
+  prop2 : ∀ {zs a b xs ys} → a ≢ b → T a xs zs → T b ys zs →
+            Bar xs → Bar ys → Bar zs
 
-  prop2 a≢b (now gx) by ta tb = now (lemma3 ta gx)
-  prop2 a≢b (later lx) by ta tb = prop2x a≢b lx by ta tb
+  prop2 a≢b ta tb (now gx) by = now (lemma3 ta gx)
+  prop2 a≢b ta tb (later lx) by = prop2x a≢b ta tb lx by
 
-  prop2x : ∀ {zs a b xs ys} → a ≢ b → (∀ w → Bar (w ∷ xs)) → Bar ys →
-             T a xs zs → T b ys zs → Bar zs
+  prop2x : ∀ {zs a b xs ys} → a ≢ b → T a xs zs → T b ys zs →
+             (∀ w → Bar (w ∷ xs)) → Bar ys → Bar zs
 
-  prop2x a≢b lx (now gy) ta tb = now (lemma3 tb gy)
-  prop2x a≢b lx (later ly) ta tb = later (prop2y a≢b lx ly ta tb)
+  prop2x a≢b ta tb lx (now gy) = now (lemma3 tb gy)
+  prop2x a≢b ta tb lx (later ly) = later (prop2y a≢b ta tb lx ly)
 
-  prop2y : ∀ {zs a b xs ys} → a ≢ b →
-             (∀ w → Bar (w ∷ xs)) → (∀ w → Bar (w ∷ ys)) →
-             T a xs zs → T b ys zs → (∀ w → Bar (w ∷ zs))
+  prop2y : ∀ {zs a b xs ys} → a ≢ b → T a xs zs → T b ys zs →
+             (∀ w → Bar (w ∷ xs)) → (∀ w → Bar (w ∷ ys)) → (∀ w → Bar (w ∷ zs))
 
-  prop2y {zs} a≢b lx ly ta tb [] = prop1 zs
-  prop2y {zs} {a} {b} {xs} {ys} a≢b lx ly ta tb (c ∷ cs) with c ≟ a
+  prop2y {zs} a≢b ta tb lx ly [] = prop1 zs
+  prop2y {zs} {a} {b} {xs} {ys} a≢b ta tb lx ly (c ∷ cs) with c ≟ a
   ... | yes c≡a rewrite c≡a =
-    prop2 a≢b (lx cs) (later ly)
+    prop2 a≢b
           (T a (cs ∷ xs) ((a ∷ cs) ∷ zs) ∋ t-keep ta)
           (T b ys ((a ∷ cs) ∷ zs)        ∋ t-drop (≢-sym a≢b) tb)
+          (lx cs) (later ly)
   ... | no  c≢a rewrite (c ≡ b ∋ ≢-trans c≢a a≢b) =
-    prop2x a≢b lx (ly cs)
+    prop2x a≢b
            (T a xs ((b ∷ cs) ∷ zs)        ∋ t-drop a≢b ta)
            (T b (cs ∷ ys) ((b ∷ cs) ∷ zs) ∋ t-keep tb)
+           lx (ly cs)
 
 
 -- prop3 : Lifting to longer words
@@ -164,28 +166,28 @@ mutual
 
 mutual
 
-  prop3 : ∀ {a v ws} → Bar (v ∷ ws) → Bar (a ≪ (v ∷ ws))
+  prop3 : ∀ {a ws} → ws ≢ [] → Bar ws → Bar (a ≪ ws)
 
-  prop3 (now g) = now (lemma2 g)
-  prop3 (later l) = later (prop3l l)
+  prop3 w≢[] (now g) = now (lemma2 g)
+  prop3 w≢[] (later l) = later (prop3l w≢[] l)
 
-  prop3l : ∀ {a v ws} → (∀ w → Bar (w ∷ v ∷ ws)) → (∀ w → Bar (w ∷ a ≪ (v ∷ ws)))
-
-  prop3l {a} {v} {ws} l [] =
-    prop1 ((a ∷ v) ∷ a ≪ ws)
-  prop3l {a} {v} {ws} l (c ∷ cs) with c ≟ a
+  prop3l : ∀ {a ws} → ws ≢ [] → (∀ w → Bar (w ∷ ws)) → (∀ w → Bar (w ∷ a ≪ ws))
+  prop3l {a} {ws} w≢[] l [] = prop1 (a ≪ ws)
+  prop3l {a} {ws} w≢[] l (c ∷ cs) with c ≟ a
   ... | yes c≡a rewrite c≡a =
-    prop3 (l cs)
+    prop3 (cs ∷ ws ≢ [] ∋ λ ()) (l cs)
   ... | no  c≢a =
     prop2 c≢a
-          (Bar (cs ∷ a ≪ (v ∷ ws))
-            ∋ prop3l l cs)
-          (Bar (v ∷ ws)
-            ∋ later l)
-          (T c (cs ∷ a ≪ (v ∷ ws)) ((c ∷ cs) ∷ a ≪ (v ∷ ws))
+          (T c (cs ∷ a ≪ ws) ((c ∷ cs) ∷ a ≪ ws)
             ∋ t-init c≢a)
-          (T a (v ∷ ws) ((c ∷ cs) ∷ a ≪ (v ∷ ws))
-            ∋ t-drop (≢-sym c≢a) (lemma4 a v ws))
+          (T a ws ((c ∷ cs) ∷ a ≪ ws)
+            ∋ t-drop (≢-sym c≢a)
+          (T a ws (a ≪ ws)
+            ∋ lemma4 a ws w≢[]))
+          (Bar (cs ∷ a ≪ ws)
+            ∋ prop3l w≢[] l cs)
+          (Bar ws
+            ∋ later l)
 
 
 --
@@ -194,7 +196,7 @@ mutual
 
 higman' :  ∀ w → Bar (w ∷ [])
 higman' [] = prop1 []
-higman' (c ∷ cs) = prop3 (higman' cs)
+higman' (c ∷ cs) = prop3 (cs ∷ [] ≢ [] ∋ λ ()) (higman' cs)
 
 higman : Bar []
 higman = later higman'
