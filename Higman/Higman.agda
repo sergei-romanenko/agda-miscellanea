@@ -47,9 +47,9 @@ data _⊵*_ (v : Word) : List Word → Set where
   ⊵*-now   : ∀ {w ws} → (n : w ⊴ v) → v ⊵* (w ∷ ws)
   ⊵*-later : ∀ {w ws} → (l : v ⊵* ws) → v ⊵* (w ∷ ws)
 
-data good : List Word → Set where
-  good-now   : ∀ {ws w} → (n : w ⊵* ws) → good (w ∷ ws)
-  good-later : ∀ {ws w} → (l : good ws) → good (w ∷ ws)
+data Good : List Word → Set where
+  good-now   : ∀ {ws w} → (n : w ⊵* ws) → Good (w ∷ ws)
+  good-later : ∀ {ws w} → (l : Good ws) → Good (w ∷ ws)
 
 infix 6 _≪_
 
@@ -68,7 +68,7 @@ data T (a : Letter) : List Word → List Word → Set where
 -- Note the subtle scope of ∀ w !
 
 data Bar : List Word → Set where
-  now   : ∀ {ws} → (g : good ws) → Bar ws
+  now   : ∀ {ws} → (g : Good ws) → Bar ws
   later : ∀ {ws} → (l : ∀ w → Bar (w ∷ ws)) → Bar ws
 
 
@@ -100,7 +100,7 @@ lemma2' : ∀ {a w ws} → w ⊵* ws → (a ∷ w) ⊵* (a ≪ ws)
 lemma2' (⊵*-now n) = ⊵*-now (⊴-keep n)
 lemma2' (⊵*-later l) = ⊵*-later (lemma2' l)
 
-lemma2 : ∀ {a ws} → good ws → good (a ≪ ws)
+lemma2 : ∀ {a ws} → Good ws → Good (a ≪ ws)
 lemma2 (good-now n) = good-now (lemma2' n)
 lemma2 (good-later l) = good-later (lemma2 l)
 
@@ -112,7 +112,7 @@ lemma3' (t-keep t) (⊵*-now n) = ⊵*-now (⊴-keep n)
 lemma3' (t-keep t) (⊵*-later l) = ⊵*-later (lemma3' t l)
 lemma3' (t-drop a≢b t) l = ⊵*-later (lemma3' t l)
 
-lemma3 : ∀ {a vs ws} → T a vs ws → good vs → good ws
+lemma3 : ∀ {a vs ws} → T a vs ws → Good vs → Good ws
 lemma3 (t-init a≢b) (good-now n) = good-now (lemma1 n)
 lemma3 (t-init a≢b) (good-later l) = good-later l
 lemma3 (t-keep t) (good-now n) = good-now (lemma3' t n)
@@ -204,18 +204,18 @@ higman = later higman'
 -- good-prefix-lemma
 --
 
-data is-prefix {A : Set} (f : ℕ → A) : List A → Set where
-  is-prefix-[] : is-prefix f []
+data Is-prefix {A : Set} (f : ℕ → A) : List A → Set where
+  is-prefix-[] : Is-prefix f []
   is-prefix-∷  : ∀ {xs : List A} →
-        is-prefix f xs → is-prefix f (f (length xs) ∷ xs)
+        Is-prefix f xs → Is-prefix f (f (length xs) ∷ xs)
 
-test-is-prefix : is-prefix suc (3 ∷ 2 ∷ 1 ∷ [])
+test-is-prefix : Is-prefix suc (3 ∷ 2 ∷ 1 ∷ [])
 test-is-prefix = is-prefix-∷ (is-prefix-∷ (is-prefix-∷ is-prefix-[]))
 
 good-prefix-lemma :
   ∀ (f : ℕ → Word) ws →
-    Bar ws → is-prefix f ws →
-    ∃ λ (vs : List Word) → is-prefix f vs × good vs
+    Bar ws → Is-prefix f ws →
+    ∃ λ (vs : List Word) → Is-prefix f vs × Good vs
 good-prefix-lemma f ws (now g) p = ws , p , g
 good-prefix-lemma f ws (later b) p =
   let w = f (length ws) in
@@ -225,5 +225,5 @@ good-prefix-lemma f ws (later b) p =
 
 good-prefix :
   ∀ (f : ℕ → Word) →
-    ∃ λ ws → (is-prefix f ws × good ws)
+    ∃ λ ws → (Is-prefix f ws × Good ws)
 good-prefix f = good-prefix-lemma f [] higman is-prefix-[]
