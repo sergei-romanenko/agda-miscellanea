@@ -14,14 +14,14 @@
 module Higman where
 
 open import Data.Nat
+  using (ℕ; zero; suc)
 open import Data.Bool
-  renaming (T to T′; _≟_ to _≟B_)
+  using (Bool; _≟_; not)
 open import Data.Bool.Properties
   using (¬-not; not-¬)
 open import Data.List
 open import Data.Product
 open import Data.Sum
-open import Data.Unit
 open import Data.Empty
 
 open import Function
@@ -29,7 +29,7 @@ open import Function
 open import Relation.Nullary
 open import Relation.Binary
 open import Relation.Binary.PropositionalEquality
-  renaming([_] to [_]ⁱ)
+  renaming([_] to ≡[_])
 
 Letter : Set
 Letter = Bool
@@ -58,12 +58,12 @@ a ≪ [] = []
 a ≪ (w ∷ ws) = (a ∷ w) ∷ a ≪ ws
 
 data T (a : Letter) : List Word → List Word → Set where
-  t-init : ∀ {w ws b} → (a≢b : a ≢ b) →
-           T a (w ∷ (b ≪ ws)) ((a ∷ w) ∷ (b ≪ ws))
-  t-keep : ∀ {w ws zs} →
-           (t : T a ws zs) → T a (w ∷ ws) ((a ∷ w) ∷ zs)
-  t-drop : ∀ {w ws zs b} → (a≢b : a ≢ b) →
-           (t : T a ws zs) → T a ws ((b ∷ w) ∷ zs)
+  t-init : ∀ {v ws b} → (a≢b : a ≢ b) →
+           T a (v ∷ (b ≪ ws)) ((a ∷ v) ∷ (b ≪ ws))
+  t-keep : ∀ {v vs ws} →
+           (t : T a vs ws) → T a (v ∷ vs) ((a ∷ v) ∷ ws)
+  t-drop : ∀ {v vs ws b} → (a≢b : a ≢ b) →
+           (t : T a vs ws) → T a vs ((b ∷ v) ∷ ws)
 
 -- Note the subtle scope of ∀ w !
 
@@ -82,7 +82,7 @@ data Bar : List Word → Set where
 ≢-sym : ∀ {ℓ} {A : Set ℓ} {x y : A} → x ≢ y → y ≢ x
 ≢-sym x≢y y≡x = x≢y (sym y≡x)
 
--- prop1
+-- prop1 : Sequences “ending” with empty word (trivial)
 
 prop1 : ∀ (ws : List Word) → Bar ([] ∷ ws)
 prop1 ws = later (λ w → now (good-now (⊵*-now ⊴-[])))
@@ -109,7 +109,7 @@ lemma3' (t-keep t) (⊵*-now n) = ⊵*-now (⊴-keep n)
 lemma3' (t-keep t) (⊵*-later l) = ⊵*-later (lemma3' t l)
 lemma3' (t-drop a≢b t) l = ⊵*-later (lemma3' t l)
 
-lemma3 : ∀ {a ws zs} → T a ws zs → good ws → good zs
+lemma3 : ∀ {a vs ws} → T a vs ws → good vs → good ws
 lemma3 (t-init a≢b) (good-now n) = good-now (lemma1 n)
 lemma3 (t-init a≢b) (good-later l) = good-later l
 lemma3 (t-keep t) (good-now n) = good-now (lemma3' t n)
@@ -120,7 +120,10 @@ lemma4 : ∀ a v ws → T a (v ∷ ws) (a ≪ (v ∷ ws))
 lemma4 a v [] = t-init (not-¬ refl)
 lemma4 a v (w ∷ ws) = t-keep (lemma4 a w ws)
 
--- prop2
+-- prop2 : Interleaving two trees
+--
+-- Proof idea: Induction on xs ∈ bar and ys ∈ bar,
+-- then case distinction on first letter of first word following zs
 
 mutual
 
@@ -138,7 +141,7 @@ mutual
     where
       prop2Iw : (w : Word) → Bar (w ∷ zs)
       prop2Iw [] = prop1 zs
-      prop2Iw (c ∷ cs) with c ≟B a
+      prop2Iw (c ∷ cs) with c ≟ a
       prop2Iw (c ∷ cs) | yes c≡a rewrite c≡a =
         prop2 a≢b (b2x cs) (later b2y)
               (T a (cs ∷ xs) ((a ∷ cs) ∷ zs)  ∋ t-keep ta)
@@ -148,7 +151,9 @@ mutual
                (T a xs ((b ∷ cs) ∷ zs)         ∋ t-drop a≢b ta)
                (T b (cs ∷ ys) ((b ∷ cs) ∷ zs)  ∋ t-keep tb)
 
--- prop3
+-- prop3 : Lifting to longer words
+--
+-- Proof idea: Induction on xs ∈ bar, then induction on first word following zs
 
 prop3 : ∀ {a v ws} → Bar (v ∷ ws) →
           Bar (a ≪ (v ∷ ws))
@@ -157,7 +162,7 @@ prop3 {a} {v} {ws} (later b) = later prop3w
   where
     prop3w : (w : Word) → Bar (w ∷ a ≪ (v ∷ ws))
     prop3w [] = prop1 ((a ∷ v) ∷ a ≪ ws)
-    prop3w (c ∷ cs) with c ≟B a
+    prop3w (c ∷ cs) with c ≟ a
     ... | yes c≡a rewrite c≡a = prop3 (b cs)
     ... | no  c≢a =
       prop2
@@ -170,7 +175,7 @@ prop3 {a} {v} {ws} (later b) = later prop3w
           ∋ t-drop (≢-sym c≢a) (lemma4 a v ws))
 
 --
--- higman
+-- higman: Main theorem
 --
 
 higman' :  ∀ w → Bar (w ∷ [])
@@ -200,6 +205,8 @@ good-prefix-lemma f ws (now g) p = ws , p , g
 good-prefix-lemma f ws (later b) p =
   let w = f (length ws) in
   good-prefix-lemma f (w ∷ ws) (b w) (is-prefix-∷ p)
+
+-- Finding good prefixes of infinite sequences
 
 good-prefix :
   ∀ (f : ℕ → Word) →
