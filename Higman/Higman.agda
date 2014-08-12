@@ -51,7 +51,8 @@ data Good : List Word → Set where
   good-now   : ∀ {ws w} → (n : w ⊵* ws) → Good (w ∷ ws)
   good-later : ∀ {ws w} → (l : Good ws) → Good (w ∷ ws)
 
-infix 6 _≪_
+-- infixr 5 _∷_ _++_
+infixr 6 _≪_
 
 _≪_ : (a : Letter) → List Word → List Word
 a ≪ [] = []
@@ -86,43 +87,42 @@ data Bar : List Word → Set where
 
 -- prop1 : Sequences “ending” with empty word (trivial)
 
-prop1 : ∀ (ws : List Word) → Bar ([] ∷ ws)
-prop1 ws = later (λ w → now (good-now (⊵*-now ⊴-[])))
+bar[]∷ : ∀ (ws : List Word) → Bar ([] ∷ ws)
+bar[]∷ ws = later (λ w → now (good-now (⊵*-now ⊴-[])))
 
 
 -- lemmas
 
-lemma1 : ∀ {a w ws} → w ⊵* ws → (a ∷ w) ⊵* ws
-lemma1 (⊵*-now n) = ⊵*-now (⊴-drop n)
-lemma1 (⊵*-later l) = ⊵*-later (lemma1 l)
+∷⊵* : ∀ {a w ws} → w ⊵* ws → (a ∷ w) ⊵* ws
+∷⊵* (⊵*-now n) = ⊵*-now (⊴-drop n)
+∷⊵* (⊵*-later l) = ⊵*-later (∷⊵* l)
 
-lemma2' : ∀ {a w ws} → w ⊵* ws → (a ∷ w) ⊵* (a ≪ ws)
-lemma2' (⊵*-now n) = ⊵*-now (⊴-keep n)
-lemma2' (⊵*-later l) = ⊵*-later (lemma2' l)
+∷⊵*≪ : ∀ {a w ws} → w ⊵* ws → (a ∷ w) ⊵* (a ≪ ws)
+∷⊵*≪ (⊵*-now n) = ⊵*-now (⊴-keep n)
+∷⊵*≪ (⊵*-later l) = ⊵*-later (∷⊵*≪ l)
 
-lemma2 : ∀ {a ws} → Good ws → Good (a ≪ ws)
-lemma2 (good-now n) = good-now (lemma2' n)
-lemma2 (good-later l) = good-later (lemma2 l)
+good≪ : ∀ {a ws} → Good ws → Good (a ≪ ws)
+good≪ (good-now n) = good-now (∷⊵*≪ n)
+good≪ (good-later l) = good-later (good≪ l)
 
-lemma3' : ∀ {a v vs ws} →
-          T a vs ws → v ⊵* vs → (a ∷ v) ⊵* ws
-lemma3' (t-init a≢b) (⊵*-now n) = ⊵*-now (⊴-keep n)
-lemma3' (t-init a≢b) (⊵*-later l) = ⊵*-later (lemma1 l)
-lemma3' (t-keep t) (⊵*-now n) = ⊵*-now (⊴-keep n)
-lemma3' (t-keep t) (⊵*-later l) = ⊵*-later (lemma3' t l)
-lemma3' (t-drop a≢b t) l = ⊵*-later (lemma3' t l)
+t∷⊵* : ∀ {a v vs ws} → T a vs ws → v ⊵* vs → (a ∷ v) ⊵* ws
+t∷⊵* (t-init a≢b) (⊵*-now n) = ⊵*-now (⊴-keep n)
+t∷⊵* (t-init a≢b) (⊵*-later l) = ⊵*-later (∷⊵* l)
+t∷⊵* (t-keep t) (⊵*-now n) = ⊵*-now (⊴-keep n)
+t∷⊵* (t-keep t) (⊵*-later l) = ⊵*-later (t∷⊵* t l)
+t∷⊵* (t-drop a≢b t) l = ⊵*-later (t∷⊵* t l)
 
-lemma3 : ∀ {a vs ws} → T a vs ws → Good vs → Good ws
-lemma3 (t-init a≢b) (good-now n) = good-now (lemma1 n)
-lemma3 (t-init a≢b) (good-later l) = good-later l
-lemma3 (t-keep t) (good-now n) = good-now (lemma3' t n)
-lemma3 (t-keep t) (good-later l) = good-later (lemma3 t l)
-lemma3 (t-drop a≢b t) g = good-later (lemma3 t g)
+tGood : ∀ {a vs ws} → T a vs ws → Good vs → Good ws
+tGood (t-init a≢b) (good-now n) = good-now (∷⊵* n)
+tGood (t-init a≢b) (good-later l) = good-later l
+tGood (t-keep t) (good-now n) = good-now (t∷⊵* t n)
+tGood (t-keep t) (good-later l) = good-later (tGood t l)
+tGood (t-drop a≢b t) g = good-later (tGood t g)
 
-lemma4 : ∀ a ws → ws ≢ [] → T a ws (a ≪ ws)
-lemma4 a [] ws≢[] = ⊥-elim (ws≢[] refl)
-lemma4 a (v ∷ []) ws≢[] = t-init (a ≢ not a ∋ not-¬ refl)
-lemma4 a (v ∷ w ∷ ws) ws≢[] = t-keep (lemma4 a (w ∷ ws) (w ∷ ws ≢ [] ∋ λ ()))
+t≪ : ∀ a ws → ws ≢ [] → T a ws (a ≪ ws)
+t≪ a [] ws≢[] = ⊥-elim (ws≢[] refl)
+t≪ a (v ∷ []) ws≢[] = t-init (a ≢ not a ∋ not-¬ refl)
+t≪ a (v ∷ w ∷ ws) ws≢[] = t-keep (t≪ a (w ∷ ws) (w ∷ ws ≢ [] ∋ λ ()))
 
 -- prop2 : Interleaving two trees
 --
@@ -131,30 +131,31 @@ lemma4 a (v ∷ w ∷ ws) ws≢[] = t-keep (lemma4 a (w ∷ ws) (w ∷ ws ≢ []
 
 mutual
 
-  prop2 : ∀ {zs a b xs ys} → a ≢ b → T a xs zs → T b ys zs →
+  ttBar : ∀ {zs a b xs ys} → a ≢ b → T a xs zs → T b ys zs →
             Bar xs → Bar ys → Bar zs
 
-  prop2 a≢b ta tb (now gx) by = now (lemma3 ta gx)
-  prop2 a≢b ta tb (later lx) by = prop2x a≢b ta tb lx by
+  ttBar a≢b ta tb (now gx) by = now (tGood ta gx)
+  ttBar a≢b ta tb (later lx) by = ttBar₁ a≢b ta tb lx by
 
-  prop2x : ∀ {zs a b xs ys} → a ≢ b → T a xs zs → T b ys zs →
+  ttBar₁ : ∀ {zs a b xs ys} → a ≢ b → T a xs zs → T b ys zs →
              (∀ w → Bar (w ∷ xs)) → Bar ys → Bar zs
 
-  prop2x a≢b ta tb lx (now gy) = now (lemma3 tb gy)
-  prop2x a≢b ta tb lx (later ly) = later (prop2y a≢b ta tb lx ly)
+  ttBar₁ a≢b ta tb lx (now gy) = now (tGood tb gy)
+  ttBar₁ a≢b ta tb lx (later ly) = later (ttBar₂ a≢b ta tb lx ly)
 
-  prop2y : ∀ {zs a b xs ys} → a ≢ b → T a xs zs → T b ys zs →
-             (∀ w → Bar (w ∷ xs)) → (∀ w → Bar (w ∷ ys)) → (∀ w → Bar (w ∷ zs))
+  ttBar₂ : ∀ {zs a b xs ys} → a ≢ b → T a xs zs → T b ys zs →
+             (∀ w → Bar (w ∷ xs)) → (∀ w → Bar (w ∷ ys)) →
+             (∀ w → Bar (w ∷ zs))
 
-  prop2y {zs} a≢b ta tb lx ly [] = prop1 zs
-  prop2y {zs} {a} {b} {xs} {ys} a≢b ta tb lx ly (c ∷ cs) with c ≟ a
+  ttBar₂ {zs} a≢b ta tb lx ly [] = bar[]∷ zs
+  ttBar₂ {zs} {a} {b} {xs} {ys} a≢b ta tb lx ly (c ∷ cs) with c ≟ a
   ... | yes c≡a rewrite c≡a =
-    prop2 a≢b
+    ttBar a≢b
           (T a (cs ∷ xs) ((a ∷ cs) ∷ zs) ∋ t-keep ta)
           (T b ys ((a ∷ cs) ∷ zs)        ∋ t-drop (≢-sym a≢b) tb)
           (lx cs) (later ly)
   ... | no  c≢a rewrite (c ≡ b ∋ ≢-trans c≢a a≢b) =
-    prop2x a≢b
+    ttBar₁ a≢b
            (T a xs ((b ∷ cs) ∷ zs)        ∋ t-drop a≢b ta)
            (T b (cs ∷ ys) ((b ∷ cs) ∷ zs) ∋ t-keep tb)
            lx (ly cs)
@@ -166,26 +167,25 @@ mutual
 
 mutual
 
-  prop3 : ∀ {a ws} → ws ≢ [] → Bar ws → Bar (a ≪ ws)
+  bar≪ : ∀ {a ws} → ws ≢ [] → Bar ws → Bar (a ≪ ws)
 
-  prop3 w≢[] (now g) = now (lemma2 g)
-  prop3 w≢[] (later l) = later (prop3l w≢[] l)
+  bar≪ w≢[] (now g) = now (good≪ g)
+  bar≪ w≢[] (later l) = later (bar≪₁ w≢[] l)
 
-  prop3l : ∀ {a ws} → ws ≢ [] → (∀ w → Bar (w ∷ ws)) → (∀ w → Bar (w ∷ a ≪ ws))
-  prop3l {a} {ws} w≢[] l [] = prop1 (a ≪ ws)
-  prop3l {a} {ws} w≢[] l (c ∷ cs) with c ≟ a
+  bar≪₁ : ∀ {a ws} → ws ≢ [] →
+             (∀ w → Bar (w ∷ ws)) → (∀ w → Bar (w ∷ a ≪ ws))
+  bar≪₁ {a} {ws} w≢[] l [] = bar[]∷ (a ≪ ws)
+  bar≪₁ {a} {ws} w≢[] l (c ∷ cs) with c ≟ a
   ... | yes c≡a rewrite c≡a =
-    prop3 (cs ∷ ws ≢ [] ∋ λ ()) (l cs)
+    bar≪ (cs ∷ ws ≢ [] ∋ λ ()) (l cs)
   ... | no  c≢a =
-    prop2 c≢a
+    ttBar c≢a
           (T c (cs ∷ a ≪ ws) ((c ∷ cs) ∷ a ≪ ws)
             ∋ t-init c≢a)
           (T a ws ((c ∷ cs) ∷ a ≪ ws)
-            ∋ t-drop (≢-sym c≢a)
-          (T a ws (a ≪ ws)
-            ∋ lemma4 a ws w≢[]))
+            ∋ t-drop (≢-sym c≢a) (t≪ a ws w≢[]))
           (Bar (cs ∷ a ≪ ws)
-            ∋ prop3l w≢[] l cs)
+            ∋ bar≪₁ w≢[] l cs)
           (Bar ws
             ∋ later l)
 
@@ -195,8 +195,8 @@ mutual
 --
 
 higman' :  ∀ w → Bar (w ∷ [])
-higman' [] = prop1 []
-higman' (c ∷ cs) = prop3 (cs ∷ [] ≢ [] ∋ λ ()) (higman' cs)
+higman' [] = bar[]∷ []
+higman' (c ∷ cs) = bar≪ (cs ∷ [] ≢ [] ∋ λ ()) (higman' cs)
 
 higman : Bar []
 higman = later higman'
