@@ -91,7 +91,7 @@ bar[]∷ : ∀ (ws : List Word) → Bar ([] ∷ ws)
 bar[]∷ ws = later (λ w → now (good-now (⊵*-now ⊴-[])))
 
 
--- lemmas
+-- Lemmas. w ⊵* ... → (a ∷ w) ⊵* ...
 
 ∷⊵* : ∀ {a w ws} → w ⊵* ws → (a ∷ w) ⊵* ws
 ∷⊵* (⊵*-now n) = ⊵*-now (⊴-drop n)
@@ -101,16 +101,18 @@ bar[]∷ ws = later (λ w → now (good-now (⊵*-now ⊴-[])))
 ∷⊵*≪ (⊵*-now n) = ⊵*-now (⊴-keep n)
 ∷⊵*≪ (⊵*-later l) = ⊵*-later (∷⊵*≪ l)
 
-good≪ : ∀ {a ws} → Good ws → Good (a ≪ ws)
-good≪ (good-now n) = good-now (∷⊵*≪ n)
-good≪ (good-later l) = good-later (good≪ l)
-
 t∷⊵* : ∀ {a v vs ws} → T a vs ws → v ⊵* vs → (a ∷ v) ⊵* ws
 t∷⊵* (t-init a≢b) (⊵*-now n) = ⊵*-now (⊴-keep n)
 t∷⊵* (t-init a≢b) (⊵*-later l) = ⊵*-later (∷⊵* l)
 t∷⊵* (t-keep t) (⊵*-now n) = ⊵*-now (⊴-keep n)
 t∷⊵* (t-keep t) (⊵*-later l) = ⊵*-later (t∷⊵* t l)
 t∷⊵* (t-drop a≢b t) l = ⊵*-later (t∷⊵* t l)
+
+-- Lemmas. Good ... → Good ...
+
+good≪ : ∀ {a ws} → Good ws → Good (a ≪ ws)
+good≪ (good-now n) = good-now (∷⊵*≪ n)
+good≪ (good-later l) = good-later (good≪ l)
 
 tGood : ∀ {a vs ws} → T a vs ws → Good vs → Good ws
 tGood (t-init a≢b) (good-now n) = good-now (∷⊵* n)
@@ -119,10 +121,13 @@ tGood (t-keep t) (good-now n) = good-now (t∷⊵* t n)
 tGood (t-keep t) (good-later l) = good-later (tGood t l)
 tGood (t-drop a≢b t) g = good-later (tGood t g)
 
+-- Lemma. T a (...) (a ≪ ...)
+
 t≪ : ∀ a ws → ws ≢ [] → T a ws (a ≪ ws)
 t≪ a [] ws≢[] = ⊥-elim (ws≢[] refl)
-t≪ a (v ∷ []) ws≢[] = t-init (a ≢ not a ∋ not-¬ refl)
-t≪ a (v ∷ w ∷ ws) ws≢[] = t-keep (t≪ a (w ∷ ws) (w ∷ ws ≢ [] ∋ λ ()))
+t≪ a (v ∷ []) ws≢[] = t-init (not-¬ refl)
+t≪ a (v ∷ w ∷ ws) ws≢[] = t-keep (t≪ a (w ∷ ws) (λ ()))
+
 
 -- prop2 : Interleaving two trees
 --
@@ -148,17 +153,25 @@ mutual
              (∀ w → Bar (w ∷ zs))
 
   ttBar₂ {zs} a≢b ta tb lx ly [] = bar[]∷ zs
-  ttBar₂ {zs} {a} {b} {xs} {ys} a≢b ta tb lx ly (c ∷ cs) with c ≟ a
+  ttBar₂ {zs} {a} {b} {xs} {ys} a≢b ta tb lx ly (c ∷ v) with c ≟ a
   ... | yes c≡a rewrite c≡a =
+    Bar ((a ∷ v) ∷ zs) ∋
     ttBar a≢b
-          (T a (cs ∷ xs) ((a ∷ cs) ∷ zs) ∋ t-keep ta)
-          (T b ys ((a ∷ cs) ∷ zs)        ∋ t-drop (≢-sym a≢b) tb)
-          (lx cs) (later ly)
-  ... | no  c≢a rewrite (c ≡ b ∋ ≢-trans c≢a a≢b) =
+          (T a (v ∷ xs) ((a ∷ v) ∷ zs)
+            ∋ t-keep ta)
+          (T b ys ((a ∷ v) ∷ zs)
+            ∋ t-drop (≢-sym a≢b) tb)
+          (lx v)
+          (later ly)
+  ... | no  c≢a rewrite ≢-trans c≢a a≢b =
+    Bar ((b ∷ v) ∷ zs) ∋
     ttBar₁ a≢b
-           (T a xs ((b ∷ cs) ∷ zs)        ∋ t-drop a≢b ta)
-           (T b (cs ∷ ys) ((b ∷ cs) ∷ zs) ∋ t-keep tb)
-           lx (ly cs)
+           (T a xs ((b ∷ v) ∷ zs)
+             ∋ t-drop a≢b ta)
+           (T b (v ∷ ys) ((b ∷ v) ∷ zs)
+             ∋ t-keep tb)
+           lx
+           (ly v)
 
 
 -- prop3 : Lifting to longer words
@@ -169,23 +182,26 @@ mutual
 
   bar≪ : ∀ {a ws} → ws ≢ [] → Bar ws → Bar (a ≪ ws)
 
-  bar≪ w≢[] (now g) = now (good≪ g)
-  bar≪ w≢[] (later l) = later (bar≪₁ w≢[] l)
+  bar≪ ws≢[] (now g) = now (good≪ g)
+  bar≪ ws≢[] (later l) = later (bar≪₁ ws≢[] l)
 
   bar≪₁ : ∀ {a ws} → ws ≢ [] →
              (∀ w → Bar (w ∷ ws)) → (∀ w → Bar (w ∷ a ≪ ws))
-  bar≪₁ {a} {ws} w≢[] l [] = bar[]∷ (a ≪ ws)
-  bar≪₁ {a} {ws} w≢[] l (c ∷ cs) with c ≟ a
-  ... | yes c≡a rewrite c≡a =
-    bar≪ (cs ∷ ws ≢ [] ∋ λ ()) (l cs)
-  ... | no  c≢a =
-    ttBar c≢a
-          (T c (cs ∷ a ≪ ws) ((c ∷ cs) ∷ a ≪ ws)
-            ∋ t-init c≢a)
-          (T a ws ((c ∷ cs) ∷ a ≪ ws)
-            ∋ t-drop (≢-sym c≢a) (t≪ a ws w≢[]))
-          (Bar (cs ∷ a ≪ ws)
-            ∋ bar≪₁ w≢[] l cs)
+
+  bar≪₁ {a} {ws} ws≢[] l [] = bar[]∷ (a ≪ ws)
+  bar≪₁ {a} {ws} ws≢[] l (b ∷ v) with b ≟ a
+  ... | yes b≡a rewrite b≡a =
+    Bar (a ≪ (v ∷ ws)) ∋
+    bar≪ (λ ()) (l v)
+  ... | no  b≢a =
+    Bar ((b ∷ v) ∷ a ≪ ws) ∋
+    ttBar b≢a
+          (T b (v ∷ a ≪ ws) ((b ∷ v) ∷ a ≪ ws)
+            ∋ t-init b≢a)
+          (T a ws ((b ∷ v) ∷ a ≪ ws)
+            ∋ t-drop (≢-sym b≢a) (t≪ a ws ws≢[]))
+          (Bar (v ∷ a ≪ ws)
+            ∋ bar≪₁ ws≢[] l v)
           (Bar ws
             ∋ later l)
 
@@ -194,12 +210,12 @@ mutual
 -- higman: Main theorem
 --
 
-higman' :  ∀ w → Bar (w ∷ [])
-higman' [] = bar[]∷ []
-higman' (c ∷ cs) = bar≪ (cs ∷ [] ≢ [] ∋ λ ()) (higman' cs)
+higman′ :  ∀ w → Bar (w ∷ [])
+higman′ [] = bar[]∷ []
+higman′ (c ∷ cs) = bar≪ (λ ()) (higman′ cs)
 
 higman : Bar []
-higman = later higman'
+higman = later higman′
 
 
 --
