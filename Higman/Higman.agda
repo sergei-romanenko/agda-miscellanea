@@ -45,7 +45,7 @@ Word = List Letter
 -- For example,
 --   true ∷ true ∷ [] ⊴ false ∷ true ∷ false ∷ true ∷ []
 
-infix 4 _⊴_ _⊵*_
+infix 4 _⊴_ _⊵∈_
 
 data _⊴_ : Word → Word → Set where
   ⊴-[]   : ∀ {ys} → [] ⊴ ys
@@ -53,21 +53,21 @@ data _⊴_ : Word → Word → Set where
   ⊴-keep : ∀ {xs ys x} → xs ⊴ ys → x ∷ xs ⊴ x ∷ ys
 
 -- In order to formalize the notion of a good sequence,
--- it is useful to define an auxiliary relation _⊵*_.
---   v ⊵* ws
+-- it is useful to define an auxiliary relation _⊵∈_.
+--   v ⊵∈ ws
 -- means that ws contains a word w, such that w ⊴ v .
 
-data _⊵*_ (v : Word) : List Word → Set where
-  ⊵*-now   : ∀ {w ws} → (n : w ⊴ v) → v ⊵* w ∷ ws
-  ⊵*-later : ∀ {w ws} → (l : v ⊵* ws) → v ⊵* w ∷ ws
+data _⊵∈_ (v : Word) : List Word → Set where
+  ⊵∈-now   : ∀ {w ws} (n : w ⊴ v) → v ⊵∈ w ∷ ws
+  ⊵∈-later : ∀ {w ws} (l : v ⊵∈ ws) → v ⊵∈ w ∷ ws
 
 -- A list of words is good if its tail is either good
 -- or contains a word which can be embedded into the word
 -- occurring at the head position of the list.
 
 data Good : List Word → Set where
-  good-now   : ∀ {ws w} → (n : w ⊵* ws) → Good (w ∷ ws)
-  good-later : ∀ {ws w} → (l : Good ws) → Good (w ∷ ws)
+  good-now   : ∀ {ws w} (n : w ⊵∈ ws) → Good (w ∷ ws)
+  good-later : ∀ {ws w} (l : Good ws) → Good (w ∷ ws)
 
 -- In order to express the fact that every infinite sequence is good,
 -- we define a predicate Bar.
@@ -77,8 +77,8 @@ data Good : List Word → Set where
 -- (2) successively adding words will turn it into a good list.
 
 data Bar : List Word → Set where
-  now   : ∀ {ws} → (g : Good ws) → Bar ws
-  later : ∀ {ws} → (l : ∀ w → Bar (w ∷ ws)) → Bar ws
+  now   : ∀ {ws} (g : Good ws) → Bar ws
+  later : ∀ {ws} (l : ∀ w → Bar (w ∷ ws)) → Bar ws
 
 -- Consequently,
 --   Bar []
@@ -92,11 +92,11 @@ data Bar : List Word → Set where
 
 -- The following function adds a letter to each word in a word list. 
 
-infixr 5 _∷*_
+infixr 5 _∷∈_
 
-_∷*_ : (a : Letter) → List Word → List Word
-a ∷* [] = []
-a ∷* (w ∷ ws) = (a ∷ w) ∷ a ∷* ws
+_∷∈_ : (a : Letter) (ws : List Word) → List Word
+a ∷∈ [] = []
+a ∷∈ (w ∷ ws) = (a ∷ w) ∷ a ∷∈ ws
 
 -- `T a vs ws` means that vs is obtained from ws by
 -- (1) first copying the prefix of words starting with the letter b,
@@ -105,7 +105,7 @@ a ∷* (w ∷ ws) = (a ∷ w) ∷ a ∷* ws
 
 data T (a : Letter) : List Word → List Word → Set where
   t-init : ∀ {v ws b} → (a≢b : a ≢ b) →
-           T a (v ∷ b ∷* ws) ((a ∷ v) ∷ b ∷* ws)
+           T a (v ∷ b ∷∈ ws) ((a ∷ v) ∷ b ∷∈ ws)
   t-keep : ∀ {v vs ws} →
            (t : T a vs ws) → T a (v ∷ vs) ((a ∷ v) ∷ ws)
   t-drop : ∀ {v vs ws b} → (a≢b : a ≢ b) →
@@ -135,46 +135,46 @@ data T (a : Letter) : List Word → List Word → Set where
 -- by appending any word.
 --
 
-bar[]∷ : ∀ (ws : List Word) → Bar ([] ∷ ws)
-bar[]∷ ws = later (λ w → now (good-now (⊵*-now ⊴-[])))
+bar[]∷ : (ws : List Word) → Bar ([] ∷ ws)
+bar[]∷ ws = later (λ w → now (good-now (⊵∈-now ⊴-[])))
 
 
--- Lemmas. w ⊵* ... → (a ∷ w) ⊵* ...
+-- Lemmas. w ⊵∈ ... → (a ∷ w) ⊵∈ ...
 
-∷⊵* : ∀ {a w ws} → w ⊵* ws → a ∷ w ⊵* ws
-∷⊵* (⊵*-now n) = ⊵*-now (⊴-drop n)
-∷⊵* (⊵*-later l) = ⊵*-later (∷⊵* l)
+∷⊵∈ : ∀ {a w ws} → w ⊵∈ ws → a ∷ w ⊵∈ ws
+∷⊵∈ (⊵∈-now n) = ⊵∈-now (⊴-drop n)
+∷⊵∈ (⊵∈-later l) = ⊵∈-later (∷⊵∈ l)
 
-∷⊵*∷* : ∀ {a w ws} → w ⊵* ws → a ∷ w ⊵* a ∷* ws
-∷⊵*∷* (⊵*-now n) = ⊵*-now (⊴-keep n)
-∷⊵*∷* (⊵*-later l) = ⊵*-later (∷⊵*∷* l)
+∷⊵∈∷∈ : ∀ {a w ws} → w ⊵∈ ws → a ∷ w ⊵∈ a ∷∈ ws
+∷⊵∈∷∈ (⊵∈-now n) = ⊵∈-now (⊴-keep n)
+∷⊵∈∷∈ (⊵∈-later l) = ⊵∈-later (∷⊵∈∷∈ l)
 
-t∷⊵* : ∀ {a v vs ws} → T a vs ws → v ⊵* vs → a ∷ v ⊵* ws
-t∷⊵* (t-init a≢b) (⊵*-now n) = ⊵*-now (⊴-keep n)
-t∷⊵* (t-init a≢b) (⊵*-later l) = ⊵*-later (∷⊵* l)
-t∷⊵* (t-keep t) (⊵*-now n) = ⊵*-now (⊴-keep n)
-t∷⊵* (t-keep t) (⊵*-later l) = ⊵*-later (t∷⊵* t l)
-t∷⊵* (t-drop a≢b t) l = ⊵*-later (t∷⊵* t l)
+t∷⊵∈ : ∀ {a v vs ws} → T a vs ws → v ⊵∈ vs → a ∷ v ⊵∈ ws
+t∷⊵∈ (t-init a≢b) (⊵∈-now n) = ⊵∈-now (⊴-keep n)
+t∷⊵∈ (t-init a≢b) (⊵∈-later l) = ⊵∈-later (∷⊵∈ l)
+t∷⊵∈ (t-keep t) (⊵∈-now n) = ⊵∈-now (⊴-keep n)
+t∷⊵∈ (t-keep t) (⊵∈-later l) = ⊵∈-later (t∷⊵∈ t l)
+t∷⊵∈ (t-drop a≢b t) l = ⊵∈-later (t∷⊵∈ t l)
 
 -- Lemmas. Good ... → Good ...
 
-good∷* : ∀ {a ws} → Good ws → Good (a ∷* ws)
-good∷* (good-now n) = good-now (∷⊵*∷* n)
-good∷* (good-later l) = good-later (good∷* l)
+good∷∈ : ∀ {a ws} → Good ws → Good (a ∷∈ ws)
+good∷∈ (good-now n) = good-now (∷⊵∈∷∈ n)
+good∷∈ (good-later l) = good-later (good∷∈ l)
 
 tGood : ∀ {a vs ws} → T a vs ws → Good vs → Good ws
-tGood (t-init a≢b) (good-now n) = good-now (∷⊵* n)
+tGood (t-init a≢b) (good-now n) = good-now (∷⊵∈ n)
 tGood (t-init a≢b) (good-later l) = good-later l
-tGood (t-keep t) (good-now n) = good-now (t∷⊵* t n)
+tGood (t-keep t) (good-now n) = good-now (t∷⊵∈ t n)
 tGood (t-keep t) (good-later l) = good-later (tGood t l)
 tGood (t-drop a≢b t) g = good-later (tGood t g)
 
--- Lemma. T a (...) (a ∷* ...)
+-- Lemma. T a (...) (a ∷∈ ...)
 
-t∷* : ∀ a ws → ws ≢ [] → T a ws (a ∷* ws)
-t∷* a [] ws≢[] = ⊥-elim (ws≢[] refl)
-t∷* a (v ∷ []) ws≢[] = t-init (not-¬ refl)
-t∷* a (v ∷ w ∷ ws) ws≢[] = t-keep (t∷* a (w ∷ ws) (λ ()))
+t∷∈ : ∀ a ws → ws ≢ [] → T a ws (a ∷∈ ws)
+t∷∈ a [] ws≢[] = ⊥-elim (ws≢[] refl)
+t∷∈ a (v ∷ []) ws≢[] = t-init (not-¬ refl)
+t∷∈ a (v ∷ w ∷ ws) ws≢[] = t-keep (t∷∈ a (w ∷ ws) (λ ()))
 
 --
 -- prop2 : Interleaving two trees
@@ -225,32 +225,32 @@ mutual
 --
 -- prop3 : Lifting to longer words
 --
--- Proof idea: Induction on xs ∈ bar, then induction on first word following zs
+-- Proof idea: Induction on Bar xs, then induction on first word following zs
 
 mutual
 
-  bar∷* : ∀ {a ws} → ws ≢ [] → Bar ws → Bar (a ∷* ws)
+  bar∷∈ : ∀ {a ws} → ws ≢ [] → Bar ws → Bar (a ∷∈ ws)
 
-  bar∷* ws≢[] (now g) = now (good∷* g)
-  bar∷* ws≢[] (later l) = later (bar∷*₁ ws≢[] l)
+  bar∷∈ ws≢[] (now g) = now (good∷∈ g)
+  bar∷∈ ws≢[] (later l) = later (bar∷∈₁ ws≢[] l)
 
-  bar∷*₁ : ∀ {a ws} → ws ≢ [] →
-             (∀ w → Bar (w ∷ ws)) → (∀ w → Bar (w ∷ a ∷* ws))
+  bar∷∈₁ : ∀ {a ws} → ws ≢ [] →
+             (∀ w → Bar (w ∷ ws)) → (∀ w → Bar (w ∷ a ∷∈ ws))
 
-  bar∷*₁ {a} {ws} ws≢[] l [] = bar[]∷ (a ∷* ws)
-  bar∷*₁ {a} {ws} ws≢[] l (b ∷ v) with b ≟ a
+  bar∷∈₁ {a} {ws} ws≢[] l [] = bar[]∷ (a ∷∈ ws)
+  bar∷∈₁ {a} {ws} ws≢[] l (b ∷ v) with b ≟ a
   ... | yes b≡a rewrite b≡a =
-    Bar (a ∷* (v ∷ ws)) ∋
-    bar∷* (λ ()) (l v)
+    Bar (a ∷∈ (v ∷ ws)) ∋
+    bar∷∈ (λ ()) (l v)
   ... | no  b≢a =
-    Bar ((b ∷ v) ∷ a ∷* ws) ∋
+    Bar ((b ∷ v) ∷ a ∷∈ ws) ∋
     ttBar b≢a
-          (T b (v ∷ a ∷* ws) ((b ∷ v) ∷ a ∷* ws)
+          (T b (v ∷ a ∷∈ ws) ((b ∷ v) ∷ a ∷∈ ws)
             ∋ t-init b≢a)
-          (T a ws ((b ∷ v) ∷ a ∷* ws)
-            ∋ t-drop (≢-sym b≢a) (t∷* a ws ws≢[]))
-          (Bar (v ∷ a ∷* ws)
-            ∋ bar∷*₁ ws≢[] l v)
+          (T a ws ((b ∷ v) ∷ a ∷∈ ws)
+            ∋ t-drop (≢-sym b≢a) (t∷∈ a ws ws≢[]))
+          (Bar (v ∷ a ∷∈ ws)
+            ∋ bar∷∈₁ ws≢[] l v)
           (Bar ws
             ∋ later l)
 
@@ -261,7 +261,7 @@ mutual
 
 higman′ :  ∀ w → Bar (w ∷ [])
 higman′ [] = bar[]∷ []
-higman′ (c ∷ cs) = bar∷* (λ ()) (higman′ cs)
+higman′ (c ∷ cs) = bar∷∈ (λ ()) (higman′ cs)
 
 higman : Bar []
 higman = later higman′
@@ -272,25 +272,26 @@ higman = later higman′
 --
 
 data Is-prefix {A : Set} (f : ℕ → A) : List A → Set where
-  is-prefix-[] : Is-prefix f []
-  is-prefix-∷  : ∀ {xs : List A} →
+  zero : Is-prefix f []
+  suc  : ∀ {xs : List A} →
         Is-prefix f xs → Is-prefix f (f (length xs) ∷ xs)
 
-test-is-prefix : Is-prefix suc (3 ∷ 2 ∷ 1 ∷ [])
-test-is-prefix = is-prefix-∷ (is-prefix-∷ (is-prefix-∷ is-prefix-[]))
+test-is-prefix : Is-prefix (λ k → suc (suc k)) (4 ∷ 3 ∷ 2 ∷ [])
+test-is-prefix = suc (suc (suc zero))
 
 good-prefix-lemma :
   ∀ (f : ℕ → Word) ws →
     Bar ws → Is-prefix f ws →
-    ∃ λ (vs : List Word) → Is-prefix f vs × Good vs
-good-prefix-lemma f ws (now g) p = ws , p , g
-good-prefix-lemma f ws (later b) p =
-  let w = f (length ws) in
-  good-prefix-lemma f (w ∷ ws) (b w) (is-prefix-∷ p)
+    ∃ λ vs → Is-prefix f vs × Good vs
+good-prefix-lemma f ws (now g) p =
+  ws , p , g
+good-prefix-lemma f ws (later l) p =
+  let w = f (length ws)
+  in good-prefix-lemma f (w ∷ ws) (l w) (suc p)
 
 -- Finding good prefixes of infinite sequences
 
 good-prefix :
   ∀ (f : ℕ → Word) →
     ∃ λ ws → (Is-prefix f ws × Good ws)
-good-prefix f = good-prefix-lemma f [] higman is-prefix-[]
+good-prefix f = good-prefix-lemma f [] higman zero
