@@ -179,7 +179,7 @@ t∷∈ a (v ∷ w ∷ ws) ws≢[] = t-keep (t∷∈ a (w ∷ ws) (λ ()))
 --
 -- prop2 : Interleaving two trees
 --
--- Proof idea: Induction on xs ∈ bar and ys ∈ bar,
+-- Proof idea: Induction on Bar xs and Bar ys,
 -- then case distinction on first letter of first word following zs
 
 mutual
@@ -209,17 +209,21 @@ mutual
             ∋ t-keep ta)
           (T b ys ((a ∷ v) ∷ zs)
             ∋ t-drop (≢-sym a≢b) tb)
-          (lx v)
-          (later ly)
-  ... | no  c≢a rewrite ≢-trans c≢a a≢b =
+          ({- Bar (v ∷ xs)
+            ∋ -} lx v)
+          (Bar ys
+            ∋ later ly)
+  ... | no  c≢a rewrite c ≡ b ∋ ≢-trans c≢a a≢b =
     Bar ((b ∷ v) ∷ zs) ∋
     ttBar₁ a≢b
            (T a xs ((b ∷ v) ∷ zs)
              ∋ t-drop a≢b ta)
            (T b (v ∷ ys) ((b ∷ v) ∷ zs)
              ∋ t-keep tb)
-           lx
-           (ly v)
+           ({- (∀ w → Bar (w ∷ xs))
+             ∋ -} lx)
+           ({- Bar (v ∷ ys)
+             ∋ -} ly v)
 
 
 --
