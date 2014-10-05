@@ -45,7 +45,7 @@ Word = List Letter
 -- For example,
 --   true ∷ true ∷ [] ⊴ false ∷ true ∷ false ∷ true ∷ []
 
-infix 4 _⊴_ _⊵∈_
+infix 4 _⊴_ _⊵∃_
 
 data _⊴_ : Word → Word → Set where
   ⊴-[]   : ∀ {ys} → [] ⊴ ys
@@ -53,20 +53,20 @@ data _⊴_ : Word → Word → Set where
   ⊴-keep : ∀ {xs ys x} → xs ⊴ ys → x ∷ xs ⊴ x ∷ ys
 
 -- In order to formalize the notion of a good sequence,
--- it is useful to define an auxiliary relation _⊵∈_.
---   v ⊵∈ ws
+-- it is useful to define an auxiliary relation _⊵∃_.
+--   v ⊵∃ ws
 -- means that ws contains a word w, such that w ⊴ v .
 
-data _⊵∈_ (v : Word) : List Word → Set where
-  ⊵∈-now   : ∀ {w ws} (n : w ⊴ v) → v ⊵∈ w ∷ ws
-  ⊵∈-later : ∀ {w ws} (l : v ⊵∈ ws) → v ⊵∈ w ∷ ws
+data _⊵∃_ (v : Word) : List Word → Set where
+  ⊵∃-now   : ∀ {w ws} (n : w ⊴ v) → v ⊵∃ w ∷ ws
+  ⊵∃-later : ∀ {w ws} (l : v ⊵∃ ws) → v ⊵∃ w ∷ ws
 
 -- A list of words is good if its tail is either good
 -- or contains a word which can be embedded into the word
 -- occurring at the head position of the list.
 
 data Good : List Word → Set where
-  good-now   : ∀ {ws w} (n : w ⊵∈ ws) → Good (w ∷ ws)
+  good-now   : ∀ {ws w} (n : w ⊵∃ ws) → Good (w ∷ ws)
   good-later : ∀ {ws w} (l : Good ws) → Good (w ∷ ws)
 
 -- In order to express the fact that every infinite sequence is good,
@@ -136,36 +136,36 @@ data T (a : Letter) : List Word → List Word → Set where
 --
 
 bar[]∷ : (ws : List Word) → Bar ([] ∷ ws)
-bar[]∷ ws = later (λ w → now (good-now (⊵∈-now ⊴-[])))
+bar[]∷ ws = later (λ w → now (good-now (⊵∃-now ⊴-[])))
 
 
--- Lemmas. w ⊵∈ ... → (a ∷ w) ⊵∈ ...
+-- Lemmas. w ⊵∃ ... → (a ∷ w) ⊵∃ ...
 
-∷⊵∈ : ∀ {a w ws} → w ⊵∈ ws → a ∷ w ⊵∈ ws
-∷⊵∈ (⊵∈-now n) = ⊵∈-now (⊴-drop n)
-∷⊵∈ (⊵∈-later l) = ⊵∈-later (∷⊵∈ l)
+∷⊵∃ : ∀ {a w ws} → w ⊵∃ ws → a ∷ w ⊵∃ ws
+∷⊵∃ (⊵∃-now n) = ⊵∃-now (⊴-drop n)
+∷⊵∃ (⊵∃-later l) = ⊵∃-later (∷⊵∃ l)
 
-∷⊵∈∷∈ : ∀ {a w ws} → w ⊵∈ ws → a ∷ w ⊵∈ a ∷∈ ws
-∷⊵∈∷∈ (⊵∈-now n) = ⊵∈-now (⊴-keep n)
-∷⊵∈∷∈ (⊵∈-later l) = ⊵∈-later (∷⊵∈∷∈ l)
+∷⊵∃∷ : ∀ {a w ws} → w ⊵∃ ws → a ∷ w ⊵∃ a ∷∈ ws
+∷⊵∃∷ (⊵∃-now n) = ⊵∃-now (⊴-keep n)
+∷⊵∃∷ (⊵∃-later l) = ⊵∃-later (∷⊵∃∷ l)
 
-t∷⊵∈ : ∀ {a v vs ws} → T a vs ws → v ⊵∈ vs → a ∷ v ⊵∈ ws
-t∷⊵∈ (t-init a≢b) (⊵∈-now n) = ⊵∈-now (⊴-keep n)
-t∷⊵∈ (t-init a≢b) (⊵∈-later l) = ⊵∈-later (∷⊵∈ l)
-t∷⊵∈ (t-keep t) (⊵∈-now n) = ⊵∈-now (⊴-keep n)
-t∷⊵∈ (t-keep t) (⊵∈-later l) = ⊵∈-later (t∷⊵∈ t l)
-t∷⊵∈ (t-drop a≢b t) l = ⊵∈-later (t∷⊵∈ t l)
+t∷⊵∃ : ∀ {a v vs ws} → T a vs ws → v ⊵∃ vs → a ∷ v ⊵∃ ws
+t∷⊵∃ (t-init a≢b) (⊵∃-now n) = ⊵∃-now (⊴-keep n)
+t∷⊵∃ (t-init a≢b) (⊵∃-later l) = ⊵∃-later (∷⊵∃ l)
+t∷⊵∃ (t-keep t) (⊵∃-now n) = ⊵∃-now (⊴-keep n)
+t∷⊵∃ (t-keep t) (⊵∃-later l) = ⊵∃-later (t∷⊵∃ t l)
+t∷⊵∃ (t-drop a≢b t) l = ⊵∃-later (t∷⊵∃ t l)
 
 -- Lemmas. Good ... → Good ...
 
 good∷∈ : ∀ {a ws} → Good ws → Good (a ∷∈ ws)
-good∷∈ (good-now n) = good-now (∷⊵∈∷∈ n)
+good∷∈ (good-now n) = good-now (∷⊵∃∷ n)
 good∷∈ (good-later l) = good-later (good∷∈ l)
 
 tGood : ∀ {a vs ws} → T a vs ws → Good vs → Good ws
-tGood (t-init a≢b) (good-now n) = good-now (∷⊵∈ n)
+tGood (t-init a≢b) (good-now n) = good-now (∷⊵∃ n)
 tGood (t-init a≢b) (good-later l) = good-later l
-tGood (t-keep t) (good-now n) = good-now (t∷⊵∈ t n)
+tGood (t-keep t) (good-now n) = good-now (t∷⊵∃ t n)
 tGood (t-keep t) (good-later l) = good-later (tGood t l)
 tGood (t-drop a≢b t) g = good-later (tGood t g)
 
