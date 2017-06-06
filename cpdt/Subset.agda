@@ -1,14 +1,12 @@
 open import Data.Empty
 open import Data.Bool
 open import Data.Nat
---open import Data.Nat.Properties
 open import Data.Maybe
-open import Data.Product
+open import Data.Product as Prod
 open import Data.Sum
-open import Function using ( _∘_ )
+open import Function using (_∘_; id)
 
 open import Relation.Nullary
-open import Relation.Nullary.Decidable using (⌊_⌋)
 open import Relation.Binary
 open import Relation.Binary.PropositionalEquality
 
@@ -16,11 +14,16 @@ open ≡-Reasoning
 
 module Subset where
 
-ex-diff : (m n : ℕ) → m ≤ n → Σ ℕ (λ x → m + x ≡ n)
---ex-diff : (m n : ℕ) → m ≤ n →  ∃ λ ( x : ℕ ) → (m + x ≡ n)
-ex-diff zero n m≤n = n , refl
-ex-diff (suc m) .(suc n) (s≤s {.m} {n} m≤n) with ex-diff m n m≤n
+ex-diff : ∀ {m n} → m ≤ n →  ∃ λ x → m + x ≡ n
+--ex-diff : {m n : ℕ} → m ≤ n → Σ ℕ (λ x → m + x ≡ n)
+ex-diff (z≤n {n}) = n , refl
+ex-diff (s≤s m≤n) with ex-diff m≤n
 ... | x , p = x , cong suc p
+
+ex-diff₂ : ∀ {m n} → m ≤ n → ∃ λ x → m + x ≡ n
+ex-diff₂ (z≤n {n}) = n , refl
+ex-diff₂ (s≤s m≤n) =
+  Prod.map id (cong suc) (ex-diff₂ m≤n)
 
 pred₁ : (n : ℕ) → 1 ≤ n  → ℕ
 pred₁ zero 1≤n = zero
@@ -45,16 +48,13 @@ pred₈ : (n : ℕ) → 1 ≤ n  → Σ ℕ (λ m → n ≡ suc m)
 pred₈ zero ()
 pred₈ (suc n) 1≤n = n , refl
 
-inv-suc : ∀ {n m} -> suc n ≡ suc m → n ≡ m
-inv-suc refl = refl
-
-pred-strong₇ : (n : ℕ) → (m : ℕ) -> Dec(n ≡ suc m)
+pred-strong₇ : (n : ℕ) → (m : ℕ) → Dec(n ≡ suc m)
 pred-strong₇ zero m = no (λ ())
 pred-strong₇ (suc zero) zero = yes refl
 pred-strong₇ (suc (suc n)) zero = no (λ ())
-pred-strong₇ (suc n') (suc m') with pred-strong₇ n' m'
-pred-strong₇ (suc n') (suc m') | yes p = yes (cong suc p)
-pred-strong₇ (suc n') (suc m') | no ¬p = no (¬p ∘ inv-suc)
+pred-strong₇ (suc n) (suc m) with pred-strong₇ n m
+pred-strong₇ (suc n) (suc m) | yes n≡sm = yes (cong suc n≡sm)
+pred-strong₇ (suc n) (suc m) | no  n≢sm = no (n≢sm ∘ cong pred)
 
 pred₉ : (n : ℕ) → Dec(Σ ℕ (λ m → n ≡ suc m))
 pred₉ zero = no 0≢m+1 where
@@ -74,68 +74,58 @@ data Type : Set where
   nat  : Type
   bool : Type
 
-data ⊢_▷_ : Exp -> Type -> Set where
-  htNat  : ∀ {n} → ⊢ nat n ▷ nat
-  htPlus : ∀ {e1 e2} → ⊢ e1 ▷ nat → ⊢ e2 ▷ nat →
-             ⊢ plus e1 e2 ▷ nat
-  htBool : ∀ {b} → ⊢ bool b ▷ bool
+data ⊢_∈_ : Exp → Type → Set where
+  nat∈  : ∀ {n} → ⊢ nat n ∈ nat
+  plus∈ : ∀ {e₁ e₂} → ⊢ e₁ ∈ nat → ⊢ e₂ ∈ nat →
+             ⊢ plus e₁ e₂ ∈ nat
+  bool∈ : ∀ {b} → ⊢ bool b ∈ bool
 
-  htAnd  : ∀ {e1 e2} → ⊢ e1 ▷ bool → ⊢ e2 ▷ bool →
-             ⊢ and e1 e2 ▷ bool
+  and∈  : ∀ {e₁ e₂} → ⊢ e₁ ∈ bool → ⊢ e₂ ∈ bool →
+             ⊢ and e₁ e₂ ∈ bool
 
-inv-htPlus-1 : ∀ {e1 e2} → ⊢ plus e1 e2 ▷ nat → ⊢ e1 ▷ nat
-inv-htPlus-1 (htPlus p q) = p
+plus∈₁ : ∀ {e₁ e₂} → ⊢ plus e₁ e₂ ∈ nat → ⊢ e₁ ∈ nat
+plus∈₁ (plus∈ p q) = p
 
-inv-htPlus-2 : ∀ {e1 e2} → ⊢ plus e1 e2 ▷ nat → ⊢ e2 ▷ nat
-inv-htPlus-2 (htPlus p q) = q
+plus∈₂ : ∀ {e₁ e₂} → ⊢ plus e₁ e₂ ∈ nat → ⊢ e₂ ∈ nat
+plus∈₂ (plus∈ p q) = q
 
-inv-htAnd-1 : ∀ {e1 e2} → ⊢ and e1 e2 ▷ bool → ⊢ e1 ▷ bool
-inv-htAnd-1 (htAnd p q) = p
+and∈₁ : ∀ {e₁ e₂} → ⊢ and e₁ e₂ ∈ bool → ⊢ e₁ ∈ bool
+and∈₁ (and∈ p q) = p
 
-inv-htAnd-2 : ∀ {e1 e2} → ⊢ and e1 e2 ▷ bool → ⊢ e2 ▷ bool
-inv-htAnd-2 (htAnd p q) = q
+and∈₂ : ∀ {e₁ e₂} → ⊢ and e₁ e₂ ∈ bool → ⊢ e₂ ∈ bool
+and∈₂ (and∈ p q) = q
 
+⊢?_∈_ : (e : Exp) → (τ : Type) →  Dec (⊢ e ∈ τ)
+⊢? nat n ∈ nat = yes nat∈
+⊢? nat n ∈ bool = no (λ ())
+⊢? plus e₁ e₂ ∈ nat with ⊢? e₁ ∈ nat | ⊢? e₂ ∈ nat
+... | yes e₁∈ | yes e₂∈ = yes (plus∈ e₁∈ e₂∈)
+... | no  e₁∉ | _        = no (e₁∉ ∘ plus∈₁)
+... | _        | no e₂∉  = no (e₂∉ ∘ plus∈₂)
+⊢? plus e₁ e₂ ∈ bool = no (λ ())
+⊢? bool b ∈ nat = no (λ ())
+⊢? bool b ∈ bool = yes bool∈
+⊢? and e₁ e₂ ∈ nat = no (λ ())
+⊢? and e₁ e₂ ∈ bool with ⊢? e₁ ∈ bool | ⊢? e₂ ∈ bool
+... | yes e₁∈ | yes e₂∈ = yes (and∈ e₁∈ e₂∈)
+... | no  e₁∉ | _        = no (e₁∉ ∘ and∈₁)
+... | _        | no  e₂∉  = no (e₂∉ ∘ and∈₂)
 
-_≡Ty?_ : (σ τ : Type) → Dec (σ ≡ τ)
-nat  ≡Ty? nat = yes refl
-nat  ≡Ty? bool = no (λ ())
-bool ≡Ty? nat = no (λ ())
-bool ≡Ty? bool = yes refl
-
-⊢?_▷_ : (e : Exp) → (τ : Type) →  Dec (⊢ e ▷ τ)
-⊢? nat n ▷ nat = yes htNat
-⊢? nat n ▷ bool = no (λ ())
-⊢? plus e1 e2 ▷ nat with ⊢? e1 ▷ nat | ⊢? e2 ▷ nat
-... | yes p | yes q = yes (htPlus p q)
-... | no ¬p | _     = no (¬p ∘ inv-htPlus-1)
-... | _     | no ¬q = no (¬q ∘ inv-htPlus-2)
-⊢? plus e1 e2 ▷ bool = no (λ ())
-⊢? bool b ▷ nat = no (λ ())
-⊢? bool b ▷ bool = yes htBool
-⊢? and e1 e2 ▷ nat = no (λ ())
-⊢? and e1 e2 ▷ bool with ⊢? e1 ▷ bool | ⊢? e2 ▷ bool
-... | yes p | yes p' = yes (htAnd p p')
-... | _     | no ¬q = no (¬q ∘ inv-htAnd-2)
-... | no ¬p | _     = no (¬p ∘ inv-htAnd-1)
-
-t01 : (⊢? nat 0 ▷ nat) ≡ yes htNat
+t01 : (⊢? nat 0 ∈ nat) ≡ yes nat∈
 t01 = refl
 
-t02 : ⊢? plus (nat 1) (nat 2) ▷ nat ≡ yes (htPlus htNat htNat)
+t02 : ⊢? plus (nat 1) (nat 2) ∈ nat ≡ yes (plus∈ nat∈ nat∈)
 t02 = refl
 
-t03 : ⌊ ⊢? plus (nat 1) (bool false) ▷ bool ⌋ ≡ false
+t03 : ⊢? plus (nat 1) (bool false) ∈ bool ≡ no (λ ())
 t03 = refl
 
-inv-plus-1 : ∀ {e1 e2} → Σ Type (⊢_▷_ (plus e1 e2)) → Σ Type (⊢_▷_ e1)
-inv-plus-1 (.nat , htPlus p1 p2) = nat , p1
-
-⊢?_ : (e : Exp) → Maybe ( Σ Type (λ τ → ⊢ e ▷ τ) )
-⊢? nat n = just (nat , htNat)
-⊢? plus e1 e2 with ⊢? e1 | ⊢? e2
-⊢? plus e1 e2 | just (nat , p1) | just (nat , p2) = just (nat , htPlus p1 p2)
-⊢? plus e1 e2 | _               | _               = nothing
-⊢? bool b = just (bool , htBool)
-⊢? and e1 e2 with ⊢? e1 | ⊢? e2
-⊢? and e1 e2 | just (bool , p1) | just (bool , p2) = just (bool , htAnd p1 p2)
-⊢? and e1 e2 | _                | _                = nothing
+⊢?_ : (e : Exp) → Maybe ( Σ Type (λ τ → ⊢ e ∈ τ) )
+⊢? nat n = just (nat , nat∈)
+⊢? plus e₁ e₂ with ⊢? e₁ | ⊢? e₂
+... | just (nat , e₁∈) | just (nat , e₂∈) = just (nat , plus∈ e₁∈ e₂∈)
+... | _ | _ = nothing
+⊢? bool b = just (bool , bool∈)
+⊢? and e₁ e₂ with ⊢? e₁ | ⊢? e₂
+... | just (bool , e₁∈) | just (bool , e₂∈) = just (bool , and∈ e₁∈ e₂∈)
+... | _ | _ = nothing
